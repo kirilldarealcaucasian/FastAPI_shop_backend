@@ -8,7 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from application.schemas.domain_model_schemas import ImageS
 from core import EntityBaseService
 from core.base_repos import OrmEntityRepoInterface
-from core.exceptions import RelatedEntityDoesNotExist, DomainModelConversionError
+from core.exceptions import RelatedEntityDoesNotExist, DomainModelConversionError, RemoteBucketDeletionError, \
+    DeletionError, ServerError
 from application.repositories import ImageRepository
 from application.schemas import ReturnImageS, CreateImageS, ReturnBookS
 from application.services.book_service import BookService
@@ -43,8 +44,7 @@ class ImageService(EntityBaseService):
         book_id: UUID,
         image: UploadFile,
     ):
-        book: ReturnBookS | None = await self.book_service\
-            .get_book_by_id(
+        book: ReturnBookS | None = await self.book_service.get_book_by_id(
             session=session,
             id=book_id
         )
@@ -73,6 +73,7 @@ class ImageService(EntityBaseService):
                 session=session,
                 domain_model=domain_model
             )
+            await super().commit(session=session)
 
     async def delete_image(self, session: AsyncSession, image_id: int) -> None:
         image: list[ReturnImageS] = await super().get_all(
@@ -83,30 +84,17 @@ class ImageService(EntityBaseService):
             raise RelatedEntityDoesNotExist("Image")
         image_url: str = image[0].url
 
-        if await super().delete(
+        _ = await super().delete(
             repo=self.image_repo, session=session, instance_id=image[0].id
-        ):
+        )  # if no exception was raised
+
+        try:
             await self.storage_service.delete_image(
                 image_url=image_url, image_id=image_id
             )
+        except (RemoteBucketDeletionError, DeletionError):
+            await session.rollback()
+            raise ServerError(detail="Something went wrong while deleting")
 
-    # async def delete_image(
-    #         self,
-    #         session: AsyncSession,
-    #         image_id: int
-    # ):
-    #     image: list[ReturnImageS] = await self.repository.get_all(session=session, id=image_id)
-    #     image_url: str = image[0].url
-    #     await self.repository.delete(session=session, instance_id=image[0].id)
-    #     try:
-    #         logger.info("Image url: ", image_url)
-    #         image_path = os.path.join(image_url)
-    #         os.remove(image_path)
-    #         return
-    #     except FileNotFoundError:
-    #         extra = {"image_id": image_id, "image_url": image_url}
-    #         logger.error("File deletion Error: Error while trying to delete file", extra, exc_info=True)
-    #         raise HTTPException(
-    #             status_code=status.HTTP_404_NOT_FOUND,
-    #             detail="File you're trying to remove does not exist"
-    #         )
+        await super().commit(session=session)
+

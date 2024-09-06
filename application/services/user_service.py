@@ -60,9 +60,10 @@ class UserService(EntityBaseService):
     async def delete_user(
         self, session: AsyncSession, user_id: str | int
     ) -> None:
-        return await super().delete(
+        await super().delete(
             repo=self.user_repo, session=session, instance_id=user_id
         )
+        await super().commit(session=session)
 
     async def update_user(
         self,

@@ -1,10 +1,14 @@
 from contextlib import asynccontextmanager
+from typing import Annotated
+
 from fastapi import UploadFile, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import logger
+from core.exceptions import RemoteBucketDeletionError
+from logger import logger
 from application.services.storage.internal_storage.image_manager import ImageManager, ImageData
-from application.repositories import ImageRepository, BookRepository
+from application.repositories import ImageRepository
+from application.repositories.book_repo import BookRepository, CombinedBookRepoInterface
 
 from application.schemas import CreateImageS, ReturnImageS
 
@@ -12,12 +16,10 @@ from application.services.storage.s3_storage.config import S3Conf
 from aiobotocore.session import get_session
 
 from application.services.storage.s3_storage.helpers import format_for_deletion
+from core.entity_base_service import EntityBaseService
 
 
-# from logger import logger
-
-
-class S3StorageService:
+class S3StorageService(EntityBaseService):
     # implements functionality for managing storage of images in the remote S3 bucket
 
     def __init__(
@@ -25,22 +27,23 @@ class S3StorageService:
             service_name: str = S3Conf.SERVICE_NAME,
             image_manager: ImageManager = Depends(),
             image_repo: ImageRepository = Depends(),
-            # image_service: ImageService = Depends(),
-            book_repo: BookRepository = Depends(),
+            book_repo: Annotated[CombinedBookRepoInterface, BookRepository] = Depends(),
     ):
         self.service_name = service_name
-        self.session = get_session()
-        # self.image_service = image_service
         self.book_repo = book_repo
         self.image_repo = image_repo
         self.bucket_name = S3Conf.BUCKET_NAME
         self.__image_manager = image_manager
-        super().__init__(image_repo=image_repo)
+        super().__init__(
+            image_repo=image_repo,
+            book_repo=book_repo
+        )
 
     @asynccontextmanager
     async def get_client(self):
+        session = get_session()
         try:
-            async with self.session.create_client(
+            async with session.create_client(
                     self.service_name, **S3Conf.get_client_config
             ) as client:
                 yield client
@@ -62,6 +65,7 @@ class S3StorageService:
         image_data: ImageData = await self.__image_manager(
             image=image, image_folder_name=instance_id
         )
+
         image_url = image_data.get("image_url", None)
         fixed_image_url = image_url[1:].replace("/", "-")
 
@@ -77,11 +81,19 @@ class S3StorageService:
             url=f"https://s3.cloud.ru/{self.bucket_name}/{self.bucket_name}/{fixed_image_url}",
         )
 
-    async def delete_image(self, image_id: int, image_url: str):
-        async with self.get_client() as client:
-            return await client.delete_object(
-                Bucket=self.bucket_name, Key=image_url
+    async def delete_image(self, image_url: str):
+        try:
+            async with self.get_client() as client:
+                return await client.delete_object(
+                    Bucket=self.bucket_name, Key=image_url
+                )
+        except Exception:
+            logger.error(
+                "Failed to delete image from the remove bucket",
+                extra={"image_url": image_url},
+                exc_info=True
             )
+            raise RemoteBucketDeletionError()
 
     async def delete_instance_with_images(
             self,
@@ -99,15 +111,37 @@ class S3StorageService:
                 bucket_name=self.bucket_name,
             )
 
-            if not await self.book_repo.delete(
-                    session=session, instance_id=instance_id
-            ):
+            _ = await super().delete(
+                repo=self.book_repo,
+                session=session,
+                instance_id=instance_id
+            )  # if no exception was raised
+
+            try:
                 async with self.get_client() as client:
-                    return await client.delete_objects(
+                    await client.delete_objects(
                         Bucket=self.bucket_name,
                         Delete={"Objects": image_keys_to_delete},
-                    )
+                        )
+            except Exception:
+                await session.rollback()
+                logger.error(
+                    "Failed to delete objects from remote bucket",
+                    exc_info=True
+                )
+                raise RemoteBucketDeletionError()
+            await super().commit(session=session)
+
         else:
-            return await self.book_repo.delete(
-                session=session, instance_id=instance_id
-            )
+            try:
+                await self.book_repo.delete(
+                    session=session, instance_id=instance_id
+                )
+                await super().commit(session=session)
+            except Exception:
+                await session.rollback()
+                logger.error(
+                    "Failed to delete objects from remote bucket",
+                    exc_info=True
+                )
+                raise RemoteBucketDeletionError()

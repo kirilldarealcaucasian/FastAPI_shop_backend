@@ -139,29 +139,3 @@ def save_log():
     # )
 
 
-@celery.task()
-def process_payment(
-            # session: AsyncSession,
-            # shopping_session_id: UUID,
-            payment_id: str
-    ):
-        from application.services.payment_service import YooCassaPaymentService
-
-        print("HEREEEEE")
-        task_logger.info("IN PROCESS PAYMENT!!!!!")
-        payment_service = YooCassaPaymentService()
-
-        loop = asyncio.get_event_loop()
-        payment_status = loop.run_until_complete(payment_service.check_payment_status(
-                    payment_id=payment_id
-                ))
-
-        if payment_status:
-            task_logger.info("PAYMENT STATUS IS OOOOOOOK")
-            return True
-
-        if not payment_status:
-            task_logger.info("PAYMENT STATUS IS NOT OOOOOOKAY")
-            return False
-
-

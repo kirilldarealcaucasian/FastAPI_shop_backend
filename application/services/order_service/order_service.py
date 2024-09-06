@@ -120,6 +120,8 @@ class OrderService(EntityBaseService):
             domain_model=domain_model
         )
 
+        await super().commit(session=session)
+
         return OrderIdS(
             id=order_id
         )
@@ -213,10 +215,15 @@ class OrderService(EntityBaseService):
 
         return result_orders
 
-    async def delete_order(self, session: AsyncSession, order_id: str | int):
-        return await super().delete(
+    async def delete_order(
+            self,
+            session: AsyncSession,
+            order_id: str | int
+    ) -> None:
+        await super().delete(
             repo=self.order_repo, session=session, instance_id=order_id
         )
+        await super().commit(session=session)
 
     async def update_order(
         self,
@@ -375,7 +382,6 @@ class OrderService(EntityBaseService):
             shopping_session_id: UUID,
             status: Literal["success", "failed"],
     ):
-        print("IN PERFORM ORDER")
         """If status OK --> get cart ids of books, then add this
          books to order, change status of payment, delete cart"""
         async with db_client.async_session() as session:
@@ -384,8 +390,6 @@ class OrderService(EntityBaseService):
                     session=session,
                     shopping_session_id=shopping_session_id
                 )
-
-                print("CART: ", cart)
 
                 await self.payment_detail_repo.update(
                     session=session,
@@ -401,8 +405,6 @@ class OrderService(EntityBaseService):
                     session=session,
                     id=shopping_session_id
                 )
-
-                print("GOT SHOPPING SESSION")
 
                 cart_books: list[AssocBookS] = cart.books
 

@@ -20,3 +20,7 @@ class UpdatePublisherS(BaseModel):
 class UpdatePartiallyPublisherS(BaseModel):
     first_name: str | None
     last_name: str | None
+
+
+class PublisherId(BaseModel):
+    id: int

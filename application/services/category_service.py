@@ -8,7 +8,7 @@ from core import EntityBaseService
 from core.base_repos import OrmEntityRepoInterface
 from core.exceptions import EntityDoesNotExist, DomainModelConversionError
 from application.schemas import (
-    ReturnCategoryS, CreateCategoryS, UpdateCategoryS,
+    ReturnCategoryS, CreateCategoryS, UpdateCategoryS, CategoryId,
 )
 from typing import Annotated
 
@@ -53,9 +53,10 @@ class CategoryService(EntityBaseService):
     async def delete_category(
         self, session: AsyncSession, category_id: int
     ) -> None:
-        return await super().delete(
+        await super().delete(
             repo=self.category_repo, session=session, instance_id=category_id
         )
+        await super().commit(session=session)
 
     async def create_category(
             self,
@@ -73,10 +74,15 @@ class CategoryService(EntityBaseService):
             )
             raise DomainModelConversionError
 
-        return await super().create(
+        id = await super().create(
             repo=self.category_repo,
             session=session,
             domain_model=domain_model
+        )
+        await super().commit(session=session)
+
+        return CategoryId(
+            id=id
         )
 
     async def update_category(

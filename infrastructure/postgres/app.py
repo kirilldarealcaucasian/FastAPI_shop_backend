@@ -24,6 +24,10 @@ class PostgresClient:
             expire_on_commit=False
         )
 
+    async def get_async_session(self) -> AsyncSession:
+        async with self.async_session() as session:
+            yield session
+
     async def get_scoped_session_dependency(self) -> AsyncGenerator[AsyncSession, None]:
         scoped_factory = async_scoped_session(
             session_factory=self.async_session,

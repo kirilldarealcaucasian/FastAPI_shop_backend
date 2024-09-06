@@ -61,6 +61,7 @@ class AuthorService(EntityBaseService):
             raise DomainModelConversionError
 
         await super().create(repo=self.author_repo, session=session, domain_model=domain_model)
+        await super().commit(session=session)
 
     async def delete_author(
         self, session: AsyncSession, author_id: int
@@ -68,6 +69,7 @@ class AuthorService(EntityBaseService):
         await super().delete(
             repo=self.author_repo, session=session, instance_id=author_id
         )
+        await super().commit(session=session)
 
     async def update_author(
         self,

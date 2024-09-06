@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from typing import Union, Protocol
 
+from application.schemas.domain_model_schemas import BookS
 from application.services.utils.filters import BookFilter
 
 from application.services.utils.filters import Pagination
@@ -104,3 +105,4 @@ class BookRepository(OrmEntityRepository):
         ).where(Book.id == str(id))
 
         return (await session.execute(stmt)).scalar_one_or_none()
+

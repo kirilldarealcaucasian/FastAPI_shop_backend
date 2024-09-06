@@ -11,3 +11,7 @@ class CreateCategoryS(BaseModel):
 
 class UpdateCategoryS(BaseModel):
     name: str = Field(min_length=3)
+
+
+class CategoryId(BaseModel):
+    id: int

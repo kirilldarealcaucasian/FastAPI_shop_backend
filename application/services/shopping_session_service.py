@@ -88,6 +88,8 @@ class ShoppingSessionService(EntityBaseService):
             domain_model=domain_model
         )
 
+        await super().commit(session=session)
+
         return ShoppingSessionIdS(
             session_id=session_id
         )

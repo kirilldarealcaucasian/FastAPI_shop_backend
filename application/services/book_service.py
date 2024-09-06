@@ -120,6 +120,8 @@ class BookService(EntityBaseService):
                 session=session,
                 domain_model=domain_model
             )
+
+        await super().commit(session=session)
         return BookIdS(
             id=book_id
         )

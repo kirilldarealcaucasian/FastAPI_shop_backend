@@ -8,7 +8,7 @@ from application.schemas.domain_model_schemas import PublisherS
 from core import EntityBaseService
 from core.base_repos import OrmEntityRepoInterface
 from application.repositories import PublisherRepository
-from application.schemas import CreatePublisherS, ReturnPublisherS
+from application.schemas import CreatePublisherS, ReturnPublisherS, PublisherId
 from core.exceptions import DomainModelConversionError
 from logger import logger
 
@@ -37,7 +37,7 @@ class PublisherService(EntityBaseService):
         self,
         session: AsyncSession,
         dto: CreatePublisherS
-    ) -> None:
+    ) -> PublisherId:
         dto: dict = dto.model_dump(exclude_unset=True)
         try:
             domain_model = PublisherS(**dto)
@@ -49,10 +49,15 @@ class PublisherService(EntityBaseService):
             )
             raise DomainModelConversionError
 
-        await super().create(
+        id = await super().create(
             repo=self.publisher_repo,
             session=session,
             domain_model=domain_model
+        )
+        await super().commit(session=session)
+
+        return PublisherId(
+            id=id
         )
 
     async def delete_publisher(
@@ -61,3 +66,4 @@ class PublisherService(EntityBaseService):
         await super().delete(
             repo=self.publisher_repo, session=session, instance_id=publisher_id
         )
+        await super().commit(session=session)

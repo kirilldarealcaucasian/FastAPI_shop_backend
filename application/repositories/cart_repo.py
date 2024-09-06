@@ -67,7 +67,7 @@ class CartRepository(OrmEntityRepository):
         # load Cart with books
         stmt = select(CartItem).join_from(
             CartItem, ShoppingSession, CartItem.session_id == ShoppingSession.id
-        ).where(ShoppingSession.id == cart_session_id).options(
+        ).where(ShoppingSession.id == str(cart_session_id)).options(
             selectinload(CartItem.book).selectinload(Book.authors),
             selectinload(CartItem.book).selectinload(Book.categories),
         )
@@ -125,7 +125,14 @@ class CartRepository(OrmEntityRepository):
             session: AsyncSession,
             shopping_session_id: UUID
     ) -> None:
-        stmt = delete(self.model).where(self.model.session_id == str(shopping_session_id))
+        stmt = select(self.model).where(self.model.session_id == str(shopping_session_id))
+        obj: Union[ShoppingSession, None] = (await session.execute(stmt)).one_or_none()
+
+        if not obj:
+            raise NotFoundError(entity="Cart")
+
+        await session.delete(obj)
+        await session.commit()
 
         try:
             await session.execute(stmt)

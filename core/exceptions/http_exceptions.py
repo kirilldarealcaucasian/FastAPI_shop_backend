@@ -10,7 +10,8 @@ __all__ = (
     "RepositoryResolutionError",
     "InvalidModelCredentials",
     "FilterError",
-    "OrderingFilterError"
+    "OrderingFilterError",
+    "BadRequest"
 )
 
 
@@ -95,11 +96,11 @@ class OrderingFilterError(HTTPException):
         )
 
 
-class OutOfStockQuantity(HTTPException):
+class BadRequest(HTTPException):
     def __init__(self, detail: str):
         super().__init__(
             detail=detail,
-            status_code=status.HTTP_409_CONFLICT
+            status_code=status.HTTP_400_BAD_REQUEST
         )
 
 

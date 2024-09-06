@@ -51,7 +51,9 @@ __all__ = (
     "DeleteBookFromCartS",
     "AddBookToOrderS",
     "OrderItemS",
-    "OrderIdS"
+    "OrderIdS",
+    "CategoryId",
+    "PublisherId"
 )
 
 from application.schemas.book_schemas import (
@@ -98,13 +100,15 @@ from application.schemas.publisher_schemas import (
     CreatePublisherS,
     UpdatePublisherS,
     UpdatePartiallyPublisherS,
-    ReturnPublisherS
+    ReturnPublisherS,
+    PublisherId
 )
 
 from application.schemas.category_schemas import (
     ReturnCategoryS,
     CreateCategoryS,
-    UpdateCategoryS
+    UpdateCategoryS,
+    CategoryId
 )
 
 from application.schemas.shopping_session_schemas import (

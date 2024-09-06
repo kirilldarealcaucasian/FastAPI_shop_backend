@@ -1,6 +1,8 @@
-from typing_extensions import TypeVar
+from typing import TypeVar
 
 __all__ = ("format_for_deletion",)
+
+
 
 T = TypeVar("T")
 

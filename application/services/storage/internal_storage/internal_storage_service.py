@@ -2,19 +2,17 @@ import os
 from fastapi import UploadFile, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core import EntityBaseService
-from core.exceptions import EntityDoesNotExist
+from core.entity_base_service import EntityBaseService
 from application.repositories import BookRepository
 from application.services.storage.internal_storage.image_manager import (
     ImageManager,
     ImageData,
 )
 from application.schemas import CreateImageS
+from core.exceptions import EntityDoesNotExist, DeletionError
 
 from logger import logger
 from celery.exceptions import TaskError
-
-
 
 
 class InternalStorageService(EntityBaseService):
@@ -80,10 +78,10 @@ class InternalStorageService(EntityBaseService):
                 extra,
                 exc_info=True,
             )
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="File you're trying to remove does not exist",
+            raise DeletionError(
+                entity="Image"
             )
+
 
     async def delete_instance_with_images(
             self,
@@ -99,14 +97,16 @@ class InternalStorageService(EntityBaseService):
                     repo=self.book_repo,
                     instance_id=instance_id
             )  # if no exceptions was raised
+            await super().commit(session=session)
             delete_all_images.delay(instance_id)
         else:
             try:
-                return await super().delete(
+                await super().delete(
                     repo=self.book_repo,
                     session=session,
                     instance_id=instance_id
                 )
+                await super().commit(session=session)
             except EntityDoesNotExist:
                 raise EntityDoesNotExist(entity="Book")
 

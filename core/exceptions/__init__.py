@@ -14,12 +14,18 @@ __all__ = (
     "DeletionError",
     "OrderingFilterError",
     "NoCookieError",
-    "OutOfStockQuantity",
     "PaymentObjectCreationError",
-    "PaymentRetrieveStatusError"
+    "PaymentRetrieveStatusError",
+    "RemoteBucketDeletionError",
+    "DeleteBooksFromCartError",
+    "AddBooksToCartError"
 )
 
-from core.exceptions.storage_exceptions import DuplicateError, DBError, NotFoundError, DeletionError
+from core.exceptions.storage_exceptions import (
+    DuplicateError, DBError,
+    NotFoundError, DeletionError,
+    RemoteBucketDeletionError
+)
 from core.exceptions.http_exceptions import (
     AlreadyExistsError, InvalidModelCredentials,
     EntityDoesNotExist, ServerError,
@@ -28,7 +34,15 @@ from core.exceptions.http_exceptions import (
     DomainModelConversionError,
     OrderingFilterError,
     NoCookieError,
-    OutOfStockQuantity
+    BadRequest
 )
 
-from core.exceptions.payment_exceptions import PaymentObjectCreationError, PaymentRetrieveStatusError
+from core.exceptions.payment_exceptions import (
+    PaymentObjectCreationError,
+    PaymentRetrieveStatusError
+)
+
+from core.exceptions.domain_models_exceptions import (
+    DeleteBooksFromCartError,
+    AddBooksToCartError
+)

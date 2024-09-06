@@ -96,7 +96,7 @@ async def add_book_to_cart(
     return await service.add_book_to_cart(
         session=session,
         dto=data,
-        session_id=shopping_session_id
+        shopping_session_id=shopping_session_id
     )
 
 
@@ -106,14 +106,14 @@ async def add_book_to_cart(
     dependencies=[Depends(PermissionService().get_cart_permission)]
 )
 async def delete_book_from_cart(
-        book_id: DeleteBookFromCartS,
+        deletion_data: DeleteBookFromCartS,
         shopping_session_id: UUID = Cookie(None),
         service: CartService = Depends(),
         session: AsyncSession = Depends(db_client.get_scoped_session_dependency)
 ) -> ReturnCartS:
     return await service.delete_book_from_cart(
         session=session,
-        book_id=book_id.book_id,
+        deletion_data=deletion_data,
         shopping_session_id=shopping_session_id
     )
 

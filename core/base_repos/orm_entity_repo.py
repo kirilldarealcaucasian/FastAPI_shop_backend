@@ -8,7 +8,7 @@ from core.exceptions.storage_exceptions import (
     DBError, NotFoundError
 )
 from sqlalchemy.exc import NoSuchTableError, NoReferenceError
-from typing import TypeVar, TypeAlias, Optional, Union
+from typing import TypeVar, TypeAlias, Optional, Union, Protocol
 from application.schemas.domain_model_schemas import \
     (
     AuthorS,
@@ -30,6 +30,47 @@ DomainModelDataT = TypeVar(
 )
 
 Id: TypeAlias = Optional[Union[str, int, UUID]]
+DomainModelDataT = TypeVar("DomainModelDataT",)
+
+__all__ = (
+    "OrmEntityRepoInterface",
+    "OrmEntityRepository",
+)
+
+class OrmEntityRepoInterface(Protocol):
+
+    async def create(
+            self,
+            domain_model: DomainModelDataT,
+            session: AsyncSession
+    ):
+        ...
+
+    async def get_all(
+            self,
+            session: AsyncSession,
+            **filters,
+    ):
+        ...
+
+
+    async def update(
+            self,
+            domain_model: DomainModelDataT,
+            instance_id: int | UUID,
+            session: AsyncSession,
+    ):
+        ...
+
+    async def delete(
+            self,
+            session: AsyncSession,
+            instance_id: int,
+    ):
+        ...
+
+    async def commit(self, session: AsyncSession):
+        ...
 
 
 class OrmEntityRepository:
@@ -43,6 +84,7 @@ class OrmEntityRepository:
         from logger import logger
 
         to_add = None
+
         try:
             to_add = self.model(**domain_model.model_dump(exclude_unset=True))
         except Exception as e:
@@ -56,7 +98,6 @@ class OrmEntityRepository:
             raise DBError(
                 traceback=str(e)
             )
-
         except IntegrityError as e:
             raise DuplicateError(
                 entity=self.model.__name__,
@@ -137,12 +178,6 @@ class OrmEntityRepository:
 
         instance = instance[0]
         await session.delete(instance)
-        try:
-            await self.commit(session=session)
-        except NoSuchTableError as e:
-            raise DBError(
-                traceback=str(e)
-            )
 
     async def commit(self, session: AsyncSession):
         from logger import logger

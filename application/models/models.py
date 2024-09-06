@@ -108,9 +108,11 @@ class Book(Base, TimestampMixin):
     name: Mapped[str]
     description: Mapped[str | None]
     price_per_unit: Mapped[float]
-    price_with_discount: Mapped[float] = mapped_column(Double, Computed(
-        "price_per_unit - (price_per_unit * (discount*0.01))")
-                                                       )
+    price_with_discount: Mapped[float] = mapped_column(
+        Double,
+        Computed(
+            "price_per_unit - (price_per_unit * (discount*0.01))"),
+    )
     number_in_stock: Mapped[int]
     rating: Mapped[float | None]
     discount: Mapped[int | None]
