@@ -308,6 +308,8 @@ class CartService(EntityBaseService):
             cart_session_id=shopping_session_id
         )
 
+        book_exists_in_cart: bool = False
+
         for cart_item in cart:
             book_domain_model: BookS = BookS.model_validate(
                 cart_item.book,
@@ -317,6 +319,7 @@ class CartService(EntityBaseService):
             #  computed field, we have to set it to None to avoid an error here
 
             if str(book_domain_model.id) == str(deletion_data.book_id):
+                book_exists_in_cart = True
                 # if we've found the book that we want to delete
                 cart_item_domain_model: CartItemS = CartItemS.model_validate(
                     cart_item,
@@ -370,6 +373,9 @@ class CartService(EntityBaseService):
                         raise ServerError()
                     logger.info("Book has been updated in a cart")
                     break
+
+        if not book_exists_in_cart:
+            raise EntityDoesNotExist(entity="Book (in a cart)")
 
         session.expire_all()  # clear session cache to get fresh data
         cart: ReturnCartS = await self.get_cart_by_session_id(

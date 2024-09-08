@@ -5,7 +5,7 @@ from fastapi import Depends
 from pydantic import ValidationError, PydanticSchemaGenerationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.models import Book
+from application.models import Book, PaymentDetail
 from application.repositories.book_order_assoc_repo import BookOrderAssocRepository, CombinedBookOrderAssocRepoInterface
 from application.repositories.book_repo import CombinedBookRepoInterface
 from application.repositories.cart_repo import CombinedCartRepositoryInterface, CartRepository
@@ -13,6 +13,7 @@ from application.repositories.payment_detail_repo import CombinedPaymentDetailRe
 from application.repositories.shopping_session_repo import CombinedShoppingSessionRepositoryInterface
 from application.schemas.domain_model_schemas import OrderS, BookOrderAssocS, PaymentDetailS
 from application.services.order_service.utils import order_assembler
+from core.base_repos import AbstractUnitOfWork, SqlAlchemyUnitOfWork
 from core.exceptions import (
     EntityDoesNotExist,
     DomainModelConversionError, NotFoundError,
@@ -49,36 +50,36 @@ from application.services import (
 )
 from application.tasks.tasks1 import send_order_summary_email
 
-
 OrderId: TypeAlias = str
 books_data: TypeAlias = str
 
 
 class OrderService(EntityBaseService):
     def __init__(
-        self,
-        order_repo: Annotated[
-            CombinedOrderRepositoryInterface, Depends(OrderRepository)
-        ],
-        book_repo: Annotated[CombinedBookRepoInterface, Depends(BookRepository)],
-        book_order_assoc_repo: Annotated[
-            CombinedBookOrderAssocRepoInterface, Depends(BookOrderAssocRepository)
-        ],
-        shopping_session_repo: Annotated[
-            CombinedShoppingSessionRepositoryInterface, Depends(ShoppingSessionRepository)
-        ],
-        cart_repo: Annotated[
-            CombinedCartRepositoryInterface, Depends(CartRepository)
-        ],
-        payment_detail_repo: Annotated[
-            CombinedPaymentDetailRepoInterface, Depends(PaymentDetailRepository)
-        ],
-        book_service: Annotated[BookService, Depends(BookService)],
-        user_service: Annotated[UserService, Depends(UserService)],
-        cart_service: Annotated[CartService, Depends(CartService)],
-        shopping_session_service: Annotated[
-            ShoppingSessionService, Depends(ShoppingSessionService)
-        ],
+            self,
+            order_repo: Annotated[
+                CombinedOrderRepositoryInterface, Depends(OrderRepository)
+            ],
+            book_repo: Annotated[CombinedBookRepoInterface, Depends(BookRepository)],
+            book_order_assoc_repo: Annotated[
+                CombinedBookOrderAssocRepoInterface, Depends(BookOrderAssocRepository)
+            ],
+            shopping_session_repo: Annotated[
+                CombinedShoppingSessionRepositoryInterface, Depends(ShoppingSessionRepository)
+            ],
+            cart_repo: Annotated[
+                CombinedCartRepositoryInterface, Depends(CartRepository)
+            ],
+            payment_detail_repo: Annotated[
+                CombinedPaymentDetailRepoInterface, Depends(PaymentDetailRepository)
+            ],
+            book_service: Annotated[BookService, Depends(BookService)],
+            user_service: Annotated[UserService, Depends(UserService)],
+            cart_service: Annotated[CartService, Depends(CartService)],
+            shopping_session_service: Annotated[
+                ShoppingSessionService, Depends(ShoppingSessionService)
+            ],
+            uow: Annotated[AbstractUnitOfWork, Depends(SqlAlchemyUnitOfWork)]
     ):
         super().__init__(
             payment_detail_repo=payment_detail_repo,
@@ -96,9 +97,10 @@ class OrderService(EntityBaseService):
         self._book_order_assoc_repo = book_order_assoc_repo
         self._shopping_session_repo = shopping_session_repo
         self._payment_detail_repo = payment_detail_repo
+        self._uow: AbstractUnitOfWork = uow
 
     async def create_order(
-        self, session: AsyncSession, dto: CreateOrderS
+            self, session: AsyncSession, dto: CreateOrderS
     ) -> OrderIdS:
         dto: dict = dto.model_dump(exclude_unset=True)
 
@@ -122,14 +124,12 @@ class OrderService(EntityBaseService):
             domain_model=domain_model
         )
 
-        await super().commit(session=session)
-
         return OrderIdS(
             id=order_id
         )
 
     async def get_all_orders(
-        self, session: AsyncSession, pagination: PaginationS
+            self, session: AsyncSession, pagination: PaginationS
     ) -> list[ShortenedReturnOrderS]:
         orders: list[Order] = await self._order_repo.get_all_orders(
             session=session,
@@ -156,7 +156,7 @@ class OrderService(EntityBaseService):
         return res
 
     async def get_order_by_id(
-        self, session: AsyncSession, order_id: int
+            self, session: AsyncSession, order_id: int
     ) -> ReturnOrderS:
 
         order_details: list[BookOrderAssoc] = await super().get_by_id(
@@ -217,6 +217,57 @@ class OrderService(EntityBaseService):
 
         return result_orders
 
+    async def get_order_details_by_payment_id(
+            self,
+            session: AsyncSession,
+            payment_id: UUID
+    ) -> ReturnOrderS:
+        try:
+            order: Order = await self._order_repo.get_order_by_payment_id(
+                session=session,
+                payment_id=payment_id
+            )
+        except (NotFoundError, DBError) as e:
+            if type(e) == NotFoundError:
+                raise EntityDoesNotExist(
+                    entity=e.entity
+                )
+            else:
+                logger.error("failed to get payment by id", exc_info=True)
+                raise ServerError()
+
+        order_details: list[BookOrderAssoc] = order.order_details
+
+        books: list[AssocBookS] = order_assembler(order_details)
+
+        return ReturnOrderS(
+            order_id=order.id,
+            books=books
+        )
+
+    async def get_order_summary(
+            self,
+            session: AsyncSession,
+            payment_id: UUID
+    ) -> OrderS:
+        try:
+            order: Order = await self._order_repo.get_order_summary(
+                session=session,
+                payment_id=payment_id
+            )
+            order_domain_model: OrderS = OrderS.model_validate(
+                order, from_attributes=True
+            )
+            return order_domain_model
+        except (NotFoundError, DBError) as e:
+            if type(e) == NotFoundError:
+                raise EntityDoesNotExist(
+                    entity=e.entity
+                )
+            else:
+                logger.error("failed to get payment by id", exc_info=True)
+                raise ServerError()
+
     async def delete_order(
             self,
             session: AsyncSession,
@@ -228,10 +279,10 @@ class OrderService(EntityBaseService):
         await super().commit(session=session)
 
     async def update_order(
-        self,
-        session: AsyncSession,
-        order_id: int,
-        dto: UpdatePartiallyOrderS,
+            self,
+            session: AsyncSession,
+            order_id: int,
+            dto: UpdatePartiallyOrderS,
     ):
         dto: dict = dto.model_dump(exclude_none=True, exclude_unset=True)
         try:
@@ -252,10 +303,10 @@ class OrderService(EntityBaseService):
         )
 
     async def add_book_to_order(
-        self,
-        order_id: int,
-        session: AsyncSession,
-        dto: AddBookToOrderS
+            self,
+            order_id: int,
+            session: AsyncSession,
+            dto: AddBookToOrderS
     ) -> ReturnOrderS:
         order_books: list[BookOrderAssoc] = await super().get_by_id(
             session=session,
@@ -308,10 +359,10 @@ class OrderService(EntityBaseService):
         return await self.get_order_by_id(session=session, order_id=order_id)
 
     async def delete_book_from_order(
-        self,
-        session: AsyncSession,
-        book_id: UUID,
-        order_id: int,
+            self,
+            session: AsyncSession,
+            book_id: UUID,
+            order_id: int,
     ) -> ReturnOrderS:
         try:
             _: list[BookOrderAssoc] = await super().get_by_id(
@@ -342,9 +393,9 @@ class OrderService(EntityBaseService):
             raise ServerError()
 
     async def make_order(
-        self,
-        session: AsyncSession,
-        order_id: int,
+            self,
+            session: AsyncSession,
+            order_id: int,
     ):
         user: ReturnUserS = await self._user_service.get_user_by_order_id(
             session=session, order_id=order_id
@@ -384,46 +435,83 @@ class OrderService(EntityBaseService):
             shopping_session_id: UUID,
             status: Literal["success", "failed"],
     ):
-        """If status OK --> get cart ids of books, then add this
-         books to order, change status of payment, delete cart"""
+        """If status is "success" -> transactionally update payment status
+        and create order with status created. Then copy books from cart
+        to order details, updating order total sum and then change status
+        of order to success. After, delete the cart"""
         async with db_client.async_session() as session:
+            try:
+                payment_details: PaymentDetail = await self._payment_detail_repo.get_by_id(
+                    session=session,
+                    id=payment_id
+                )
+            except (NotFoundError, DBError) as e:
+                if type(e) == NotFoundError:
+                    raise EntityDoesNotExist("Payment object")
+                else:
+                    raise ServerError("failed to create order")
+
             if status == "success":
+                logger.debug("payment status is successful")
                 cart: ReturnCartS = await self._cart_service.get_cart_by_session_id(
                     session=session,
                     shopping_session_id=shopping_session_id
                 )
 
-                await self._payment_detail_repo.update(
-                    session=session,
-                    domain_model=PaymentDetailS(
-                        status="success",
-                    ),
-                    instance_id=payment_id
-                )  # update payment status
-
-                print("UPDATED PAYMENT STATUS")
-
-                shopping_session: ReturnShoppingSessionS = await self._shopping_session_service.get_shopping_session_by_id(
+                shopping_session: ReturnShoppingSessionS = await self._shopping_session_service \
+                    .get_shopping_session_by_id(
                     session=session,
                     id=shopping_session_id
                 )
 
-                cart_books: list[AssocBookS] = cart.books
+                try:
+                    async with self._uow as uow:
+                        payment_update_obj = PaymentDetailS(
+                            id=payment_id,
+                            status="success",
+                        )  # update payment status
+                        await uow.update(
+                            obj=payment_update_obj,
+                            orm_model=PaymentDetail
+                        )
+                        logger.debug("Payment status updated")
 
-                domain_models: list[BookOrderAssocS] = []
+                        cart_books: list[AssocBookS] = cart.books
 
-                order_dto = CreateOrderS(
-                    user_id=shopping_session.user_id,
-                    order_status="success"
-                )
+                        order_domain_models: list[BookOrderAssocS] = []
 
-                order: OrderIdS = await self.create_order(
+                        order_create_obj = OrderS(
+                            user_id=shopping_session.user_id,
+                            order_status="created",
+                            payment_id=payment_id,
+                            total_sum=payment_details.amount
+                        )
+                        uow.add(
+                            obj=order_create_obj,
+                            orm_model=Order
+                        )  # create order
+                        await uow.commit()
+                except DBError:
+                    extra = {
+                        "payment_id": payment_id,
+                        "shopping_session_id": shopping_session_id,
+                        "payment_status": "success"
+                    }
+                    logger.error(
+                        "Failed to change payment status to 'success' or create order or both",
+                        extra=extra
+                    )
+                    raise ServerError(
+                        detail="Server error. Failed to create order"
+                    )
+
+                order: Order = await self._order_repo.get_order_by_payment_id(
                     session=session,
-                    dto=order_dto
-                )  # create order
+                    payment_id=payment_id
+                )  # retrieve previously created order
 
-                for book in cart_books:
-                    domain_models.append(
+                for book in cart_books:  # prepare books to be copied from cart to order
+                    order_domain_models.append(
                         BookOrderAssocS(
                             book_id=book.book_id,
                             order_id=order.id,
@@ -431,34 +519,61 @@ class OrderService(EntityBaseService):
                         )
                     )
 
-                print("CREATED ORDER")
-
                 try:
                     await self._book_order_assoc_repo.create_many(
                         session=session,
-                        domain_models=domain_models
-                    )  # take books from cart to order
-                    print("ORDER IS FULFILLED WITH DATA")
-                except DBError:
-                    await session.rollback()
+                        domain_models=order_domain_models
+                    )  # copy books from cart to order
+                    await super().commit(session=session)
+                except (ServerError, DBError):
+                    order_domain_model = OrderS(
+                        order_status="failed"
+                    )
+                    await super().update(  # updates order status to "failed"
+                        repo=self._order_repo,
+                        session=session,
+                        instance_id=payment_id,
+                        domain_model=order_domain_model
+                    )
                     extra = {
-                        "domain_models": domain_models
+                        "payment_id": payment_id,
+                        "shopping_session_id": shopping_session_id,
+                        "order_domain_models": order_domain_models
                     }
-                    logger.error("failed to add data to order", exc_info=True, extra=extra)
-                    raise ServerError("Failed to create order")
+                    logger.error("failed to copy books from cart to order", exc_info=True, extra=extra)
+                    raise ServerError("Server error. Failed to create order")
 
-            try:
-                await self._shopping_session_service.delete(
-                    session=session,
-                    repo=self._shopping_session_repo,
-                    instance_id=shopping_session_id
-                )  # delete cart with its items
-            except DBError:
-                await session.rollback()
-                logger.error("failed to delete cart")
-            print("CART DELETED")
+                order_domain_model = OrderS(
+                    order_status="success",
+                )
 
+                try:
+                    await self._order_repo.update(
+                        domain_model=order_domain_model,
+                        instance_id=order.id,
+                        session=session
+                    )
+                except DBError:
+                    extra = {
+                        "order_id": order.id
+                    }
+                    logger.error(
+                        "failed to change order status",
+                        extra=extra,
+                        exc_info=True
+                    )
+                    raise ServerError("Failed to change order status.")
 
+                try:
+                    await self._shopping_session_service.delete(
+                        session=session,
+                        repo=self._shopping_session_repo,
+                        instance_id=shopping_session_id
+                    )  # delete cart with its items
+                except DBError:
+                    extra = {"shopping_session_id": shopping_session_id}
+                    logger.error("failed to delete cart", extra=extra)
 
-
-
+            else:
+                print("IN FAILED PAYMENT")
+                pass

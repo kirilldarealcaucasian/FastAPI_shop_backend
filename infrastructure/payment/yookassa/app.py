@@ -1,7 +1,7 @@
 import asyncio
 import json
 import uuid
-from typing import Protocol, TypeAlias
+from typing import Protocol, TypeAlias, Annotated
 
 from fastapi import Depends
 from yookassa import Payment, Configuration
@@ -10,7 +10,6 @@ from uuid import uuid4, UUID
 from application.schemas import CreatePaymentS, ReturnPaymentS
 from application.services.order_service.order_service import OrderService
 from core.config import settings
-
 
 __all__ = (
     "PaymentProviderInterface",
@@ -31,13 +30,13 @@ class PaymentProviderInterface(Protocol):
     ) -> ReturnPaymentS:
         ...
 
-    def get_payment_status(self, payment_status: int) -> str:
+    def get_payment_status(self, payment_id: str) -> str:
         ...
 
     async def check_payment_status(
             self,
+            payment_id: str,
             shopping_session_id: UUID,
-            payment_id: str
     ) -> bool:
         ...
 
@@ -47,11 +46,11 @@ class YooKassaPaymentProvider:
 
     def __init__(
             self,
-            order_service: OrderService = Depends(OrderService)
+            order_service: Annotated[OrderService, Depends(OrderService)]
     ):
         Configuration.account_id = settings.YOOCASSA_ACCOUNT_ID
         Configuration.secret_key = settings.YOOCASSA_SECRET_KEY
-        self.order_service = order_service
+        self._order_service = order_service
 
     def create_payment(
             self,
@@ -117,28 +116,32 @@ class YooKassaPaymentProvider:
             payment_id: str,
             shopping_session_id: UUID,
     ) -> bool:
+        """makes requests to the payment provider to get payment status"""
         payment_status = self.get_payment_status(payment_id=payment_id)
 
         while payment_status == "pending":
             logger.debug("Checking payment status in the background")
             payment_status = self.get_payment_status(payment_id=payment_id)
-            await asyncio.sleep(5)
+            await asyncio.sleep(5)  # relinquish control to the event loop for 5 seconds
 
         payment_id_to_uuid = uuid.UUID(payment_id)
 
         if payment_status == "succeeded":
-            logger.debug("Payment succeeded!")
-            logger.debug("Payment status is 'succeeded'")
-            return await self.order_service.perform_order(
+            logger.info("Payment succeeded!")
+            return await self._order_service.perform_order(
                 payment_id=payment_id_to_uuid,
                 shopping_session_id=shopping_session_id,
                 status="success"
             )
 
         else:
-            logger.debug("Payment failed")
-            return await self.order_service.perform_order(
+            extra = {
+                "payment_id": payment_id,
+                "shopping_session_id": shopping_session_id
+            }
+            logger.info("Payment failed (was canceled / timed out)!", extra=extra)
+            return await self._order_service.perform_order(
                 payment_id=payment_id_to_uuid,
                 shopping_session_id=shopping_session_id,
                 status="failed"
-            )
+            )  # init a process of order creation

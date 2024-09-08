@@ -7,7 +7,7 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from application import User, Book
-from application.models import ShoppingSession, CartItem
+from application.models import ShoppingSession, CartItem, PaymentDetail
 from application.repositories.cart_repo import CombinedCartRepositoryInterface, CartRepository
 from application.repositories.payment_detail_repo import CombinedPaymentDetailRepoInterface, PaymentDetailRepository
 from application.repositories.shopping_session_repo import CombinedShoppingSessionRepositoryInterface, \
@@ -41,15 +41,30 @@ class PaymentService(EntityBaseService):
                 CombinedPaymentDetailRepoInterface, Depends(PaymentDetailRepository)
             ]
     ):
-        self.payment_provider: PaymentProviderInterface = payment_provider
         super().__init__(
             shopping_session_repo=shopping_session_repo,
             cart_repo=cart_repo,
             payment_detail_repo=payment_detail_repo
         )
+        self._payment_provider: PaymentProviderInterface = payment_provider
         self._shopping_session_repo: CombinedShoppingSessionRepositoryInterface = shopping_session_repo
         self._cart_repo: CombinedCartRepositoryInterface = cart_repo
         self._payment_detail_repo: CombinedPaymentDetailRepoInterface = payment_detail_repo
+
+    async def get_payment_by_id(
+            self,
+            session: AsyncSession,
+            payment_id: UUID
+    ) -> PaymentDetailS:
+        payment: PaymentDetail = await super().get_by_id(
+            repo=self._payment_detail_repo,
+            session=session,
+            id=payment_id)
+
+        payment_detail: PaymentDetailS = PaymentDetailS.model_validate(
+            payment, from_attributes=True
+        )
+        return payment_detail
 
     async def make_payment(
             self,
@@ -109,11 +124,15 @@ class PaymentService(EntityBaseService):
         )
 
         try:
-            payment_creds: ReturnPaymentS = self.payment_provider.create_payment(
-                payment_data=payment_data
+            payment_creds: ReturnPaymentS = self._payment_provider.create_payment(
+                payment_data=payment_data,
             )
         except PaymentObjectCreationError:
-            raise ServerError("Something went wrong during payment process")
+            raise ServerError(
+                """
+                Something went wrong during payment process. 
+                It's impossible to perform payment now. Try later"""
+            )
 
         payment_id: UUID = uuid.UUID(payment_creds.payment_id)
 
@@ -125,16 +144,15 @@ class PaymentService(EntityBaseService):
         )
 
         _ = await super().create(
-            session=session,
             repo=self._payment_detail_repo,
+            session=session,
             domain_model=domain_model
         )  # create PaymentDetail, if sth is wrong http_exception is raised
 
         logger.debug("Starting to check payment status . . .")
-        _ = asyncio.create_task(self.payment_provider.check_payment_status(
+        _ = asyncio.create_task(self._payment_provider.check_payment_status(
             shopping_session_id=shopping_session_id,
             payment_id=payment_creds.payment_id)
         )  # schedule a task to the event loop so that it could execute in the "background"
 
         return payment_creds.confirmation_url
-

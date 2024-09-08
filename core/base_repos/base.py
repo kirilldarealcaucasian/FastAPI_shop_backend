@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Protocol, TypeVar, TypeAlias, Optional, Union
+from typing import Protocol, TypeVar
 
 __all__ = (
     "OrmEntityRepoInterface"
@@ -22,6 +22,8 @@ class OrmEntityRepoInterface(Protocol):
     async def get_all(
             self,
             session: AsyncSession,
+            page: int = 0,
+            limit: int = 5,
             **filters,
     ):
         ...

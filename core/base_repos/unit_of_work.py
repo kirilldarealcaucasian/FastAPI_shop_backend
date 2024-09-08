@@ -39,6 +39,7 @@ class AbstractUnitOfWork(Protocol):
 
 
 class SqlAlchemyUnitOfWork:
+    """Allows to perform operations transactionally"""
 
     def __init__(self):
         from infrastructure.postgres import db_client
@@ -52,18 +53,19 @@ class SqlAlchemyUnitOfWork:
             extra = {"exc_type": exc_type, "exc_val": exc_val, "exc_tb": exc_tb}
             logger.error("An error occurred in UnitOfWork", extra=extra)
             await self._session.rollback()
-            raise DBError(traceback=str(exc_tb))
+            exc_value = " ".join([str(exc_type), str(exc_val), str(exc_tb)])
+            raise DBError(traceback=exc_value)
 
         self._session.expire_all()
         await self._session.aclose()
 
-    async def add(self, obj, orm_model):
+    def add(self, obj, orm_model):
         data = obj.model_dump(
             exclude_unset=True,
             exclude_none=True
         )
         to_add = orm_model(**data)
-        await self._session.add(to_add)
+        self._session.add(to_add)
 
     async def update(self, obj, orm_model):
         data = obj.model_dump(

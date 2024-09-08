@@ -10,7 +10,7 @@ from application.schemas.order_schemas import AssocBookS
 from application.services import CartService, BookService, ShoppingSessionService, UserService
 from application.services.storage.internal_storage.image_manager import ImageManager
 from core.base_repos.unit_of_work import SqlAlchemyUnitOfWork
-from core.exceptions import BadRequest
+from core.exceptions import BadRequest, EntityDoesNotExist
 from infrastructure.postgres.app import db_client
 from application.services.storage.internal_storage.internal_storage_service import InternalStorageService
 
@@ -277,3 +277,21 @@ async def test_delete_more_books_than_in_cart(
         )
 
         assert "You're trying to delete more books that there exists in the cart" in str(excinfo.value)
+
+
+@pytest.mark.asyncio(scope="session")
+async def test_delete_book_that_not_in_cart(
+        cart_service: CartService,
+        session: AsyncSession,
+):
+    with pytest.raises(EntityDoesNotExist) as excinfo:
+        _ = await cart_service.delete_book_from_cart(
+            session=session,
+            deletion_data=DeleteBookFromCartS(
+                book_id=UUID('17cfb58c-1dab-46d1-9f8d-9de15e111a4a'),
+                quantity=1000
+            ),
+            shopping_session_id=UUID("01e1ca73-5dea-46f2-a19b-56b5a7804efc")
+        )
+
+        assert "Book (in a cart) does not exist" in str(excinfo.value)

@@ -210,7 +210,7 @@ class Order(Base):
     order_status: Mapped[str | None] = mapped_column(default="pending", server_default="pending")
     order_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     total_sum: Mapped[float] = mapped_column(Double, default=0)
-    payment_id: Mapped[str | None] = mapped_column(ForeignKey("payment_details.id", ondelete="RESTRICT"))
+    payment_id: Mapped[UUID | None] = mapped_column(ForeignKey("payment_details.id", ondelete="RESTRICT"))
 
     # relationships
     order_details: Mapped[list["BookOrderAssoc"]] = relationship(

@@ -9,9 +9,7 @@ from application.services.utils.filters import Pagination
 from core import OrmEntityRepository
 from core.base_repos import OrmEntityRepoInterface
 from application import User
-from application.schemas.order_schemas import (
-    UpdatePartiallyOrderS
-)
+
 from application.models import Order, Book, BookOrderAssoc
 from typing import Protocol, Union, TypeAlias
 from core.exceptions import NotFoundError, DBError
@@ -38,11 +36,25 @@ class OrderRepositoryInterface(Protocol):
     ) -> list[BookOrderAssoc]:
         ...
 
+    async def get_order_by_payment_id(
+            self,
+            session: AsyncSession,
+            payment_id: UUID
+    ) -> Order:
+        ...
+
     async def get_order_by_id(
             self,
             session: AsyncSession,
             order_id: int
     ) -> list[BookOrderAssoc]:
+        ...
+
+    async def get_order_summary(
+            self,
+            session: AsyncSession,
+            payment_id: UUID
+    ) -> Order:
         ...
 
     async def get_order_with_order_details(
@@ -57,14 +69,6 @@ class OrderRepositoryInterface(Protocol):
             session:AsyncSession,
             book_id: UUID,
             order_id: int
-    ):
-        ...
-
-    async def update_order(
-            self,
-            session: AsyncSession,
-            order_id: int,
-            data: UpdatePartiallyOrderS,
     ):
         ...
 
@@ -175,5 +179,50 @@ class OrderRepository(OrmEntityRepository):
             return order
         except SQLAlchemyError as e:
             raise DBError(traceback=str(e))
+
+    async def get_order_by_payment_id(
+            self,
+            session: AsyncSession,
+            payment_id: UUID
+    ) -> Order:
+        stmt = select(Order).where(Order.payment_id == payment_id).options(
+            selectinload(Order.order_details).selectinload(BookOrderAssoc.book).selectinload(Book.categories),
+            selectinload(Order.order_details).selectinload(BookOrderAssoc.book).selectinload(Book.authors),
+        )
+
+        # stmt = select(Order).where(Order.payment_id == payment_id)
+
+        try:
+            order: Union[Order, None] = (await session.scalars(stmt)).one_or_none()
+        except SQLAlchemyError as e:
+            raise DBError(traceback=str(e))
+
+        if not order:
+            raise NotFoundError(
+                entity="Order"
+            )
+
+        return order
+
+    async def get_order_summary(
+            self,
+            session: AsyncSession,
+            payment_id: UUID
+    ) -> Order:
+        stmt = select(Order).filter_by(payment_id=payment_id)
+        try:
+           order: Union[Order, None] = (await session.scalars(stmt)).one_or_none()
+        except SQLAlchemyError as e:
+            raise DBError(traceback=str(e))
+
+        if not order:
+            raise NotFoundError(entity="Order")
+        return order
+
+
+
+
+
+
 
 

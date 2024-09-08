@@ -44,7 +44,7 @@ class InvalidModelCredentials(HTTPException):
 
 
 class EntityDoesNotExist(HTTPException):
-    def __init__(self, entity="Entity "):
+    def __init__(self, entity="Entity"):
         super().__init__(
             detail=f"{entity} does not exist",
             status_code=status.HTTP_404_NOT_FOUND,

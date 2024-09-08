@@ -17,7 +17,7 @@ class PaymentDetailRepoInterface(Protocol):
             self,
             session: AsyncSession,
             id: UUID
-    ) -> list[PaymentDetail]:
+    ) -> PaymentDetail:
         ...
 
 
@@ -32,17 +32,15 @@ class PaymentDetailRepository(OrmEntityRepository):
             self,
             session: AsyncSession,
             id: UUID
-    ) -> list[PaymentDetail]:
+    ) -> PaymentDetail:
         stmt = select(PaymentDetail).where(PaymentDetail.id == str(id))
 
         try:
-            res = await session.scalars(stmt)
+            res: Union[PaymentDetail, None] = (await session.scalars(stmt)).one_or_none()
         except SQLAlchemyError as e:
             raise DBError(traceback=str(e))
 
         if not res:
             raise NotFoundError(entity="PaymentDetail")
 
-        return list(res)
-
-
+        return res

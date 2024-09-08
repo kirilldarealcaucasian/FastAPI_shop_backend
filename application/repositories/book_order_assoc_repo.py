@@ -37,4 +37,3 @@ class BookOrderAssocRepository(OrmEntityRepository):
             raise DBError(traceback=str(e))
 
         session.add_all(to_add)
-        await super().commit(session=session)
