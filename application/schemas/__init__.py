@@ -53,7 +53,8 @@ __all__ = (
     "OrderItemS",
     "OrderIdS",
     "CategoryId",
-    "PublisherId"
+    "PublisherId",
+    "CartPrimaryIdentifier",
 )
 
 from application.schemas.book_schemas import (
@@ -123,6 +124,7 @@ from application.schemas.cart_schemas import (
     AddBookToCartS,
     CartSessionId,
     DeleteBookFromCartS,
+    CartPrimaryIdentifier
 )
 
 from application.schemas.filters import BookFilterS

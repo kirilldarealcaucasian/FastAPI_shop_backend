@@ -8,7 +8,6 @@ from core.exceptions import DeleteBooksFromCartError, AddBooksToCartError
 class CartItemS(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: int | None = None
     session_id: UUID | None = None
     book_id: UUID | None = None
     quantity: int | None = Field(default=None, gt=0)

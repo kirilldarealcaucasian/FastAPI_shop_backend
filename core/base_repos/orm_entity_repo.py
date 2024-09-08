@@ -8,7 +8,7 @@ from core.exceptions.storage_exceptions import (
     DBError, NotFoundError
 )
 from sqlalchemy.exc import NoSuchTableError, NoReferenceError
-from typing import TypeVar, TypeAlias, Optional, Union, Protocol
+from typing import TypeVar, TypeAlias, Optional, Union
 from application.schemas.domain_model_schemas import \
     (
     AuthorS,
@@ -30,47 +30,10 @@ DomainModelDataT = TypeVar(
 )
 
 Id: TypeAlias = Optional[Union[str, int, UUID]]
-DomainModelDataT = TypeVar("DomainModelDataT",)
 
 __all__ = (
-    "OrmEntityRepoInterface",
     "OrmEntityRepository",
 )
-
-class OrmEntityRepoInterface(Protocol):
-
-    async def create(
-            self,
-            domain_model: DomainModelDataT,
-            session: AsyncSession
-    ):
-        ...
-
-    async def get_all(
-            self,
-            session: AsyncSession,
-            **filters,
-    ):
-        ...
-
-
-    async def update(
-            self,
-            domain_model: DomainModelDataT,
-            instance_id: int | UUID,
-            session: AsyncSession,
-    ):
-        ...
-
-    async def delete(
-            self,
-            session: AsyncSession,
-            instance_id: int,
-    ):
-        ...
-
-    async def commit(self, session: AsyncSession):
-        ...
 
 
 class OrmEntityRepository:
@@ -80,7 +43,7 @@ class OrmEntityRepository:
             self,
             session: AsyncSession,
             domain_model: DomainModelDataT,
-    ) -> Id:
+    ) -> Optional[Id | DomainModelDataT]:
         from logger import logger
 
         to_add = None
@@ -108,7 +71,11 @@ class OrmEntityRepository:
             raise DBError(
                 traceback=str(e)
             )
-        added_entity_id = to_add.id
+        try:
+            # in case primary identifier is not called id or is composite
+            added_entity_id = to_add.id
+        except AttributeError:
+            return domain_model
         logger.info(f"added {self.model}: {added_entity_id}")
         return added_entity_id
 
@@ -117,7 +84,7 @@ class OrmEntityRepository:
             session: AsyncSession,
             page: int = 0,
             limit: int = 5,
-            **filters
+            **filters,
     ) -> list:
         stmt = select(self.model).filter_by(**filters).offset(page * limit).limit(limit)
         try:
@@ -135,7 +102,7 @@ class OrmEntityRepository:
     async def update(
             self,
             domain_model: DomainModelDataT,
-            instance_id: str | int | UUID,
+            instance_id: int | UUID,
             session: AsyncSession,
     ) -> model:
         res = await self.get_all(session=session, id=instance_id)  # check existence of the entity
@@ -169,7 +136,7 @@ class OrmEntityRepository:
     async def delete(
             self,
             session: AsyncSession,
-            instance_id: int | str,
+            instance_id: int | str | UUID,
     ) -> None:
         instance = await self.get_all(session=session, id=instance_id)
 

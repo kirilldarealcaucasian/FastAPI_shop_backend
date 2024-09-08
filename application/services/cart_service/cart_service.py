@@ -4,30 +4,25 @@ from fastapi.security import HTTPAuthorizationCredentials
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application import Book
-from application.models import CartItem
+from application.models import CartItem, Book
 from application.repositories.cart_repo import CombinedCartRepositoryInterface, CartRepository
 from application.repositories.book_repo import BookRepository, CombinedBookRepoInterface
 from application.schemas import AddBookToCartS, ReturnCartS, ShoppingSessionIdS, CreateShoppingSessionS, \
     DeleteBookFromCartS
 from core.base_repos.unit_of_work import AbstractUnitOfWork, SqlAlchemyUnitOfWork
 from application.services import UserService, ShoppingSessionService, BookService
-from application.services.cart_service import store_cart_to_cache, serialize_and_store_cart_books
-from application.services.cart_service.utils import \
-    (
-    cart_assembler
-)
+from application.services.cart_service import store_cart_to_cache, serialize_and_store_cart_books, cart_assembler
 
 from auth.helpers import get_token_payload
 from core import EntityBaseService
 from typing import Annotated, Union
 from application.schemas.domain_model_schemas import CartItemS, BookS
 
-from uuid import UUID as uuid_UUID
+from uuid import UUID as uuid_UUID  # noqa
 
 from core.config import settings
 from core.exceptions import NotFoundError, EntityDoesNotExist, DBError, ServerError, AlreadyExistsError, \
-    AddBooksToCartError, BadRequest, DeleteBooksFromCartError
+    AddBooksToCartError, BadRequest, DeleteBooksFromCartError, DecrementNumberInStockError
 from infrastructure.redis import redis_client
 from logger import logger
 
@@ -36,14 +31,14 @@ class CartService(EntityBaseService):
 
     def __init__(
             self,
-            cart_repo: Annotated[
-                CombinedCartRepositoryInterface, Depends(CartRepository)
-            ],
             book_repo: Annotated[CombinedBookRepoInterface, Depends(BookRepository)],
+            cart_repo: Annotated[CombinedCartRepositoryInterface, Depends(CartRepository)],
+            shopping_session_service: Annotated[
+                ShoppingSessionService, Depends(ShoppingSessionService)
+            ],
+            user_service: Annotated[UserService, Depends(UserService)],
+            book_service: Annotated[BookService, Depends(BookService)],
             uow: Annotated[AbstractUnitOfWork, Depends(SqlAlchemyUnitOfWork)],
-            shopping_session_service: ShoppingSessionService = Depends(),
-            user_service: UserService = Depends(),
-            book_service: BookService = Depends()
     ):
         self.cart_repo = cart_repo
         self.book_repo = book_repo
@@ -51,11 +46,11 @@ class CartService(EntityBaseService):
             cart_repo=cart_repo,
             book_repo=book_repo
         )
-        self.shopping_session_service = shopping_session_service
-        self.user_service = user_service
-        self.book_service = book_service
-        self.redis_con: Redis = redis_client.connection
-        self.uow: AbstractUnitOfWork = uow
+        self._shopping_session_service: ShoppingSessionService = shopping_session_service
+        self._user_service: UserService = user_service
+        self._book_service: BookService = book_service
+        self._redis_con: Redis = redis_client.connection
+        self._uow: AbstractUnitOfWork = uow
 
     @store_cart_to_cache(cache_time_seconds=350)
     async def get_cart_by_session_id(
@@ -89,7 +84,7 @@ class CartService(EntityBaseService):
             user_id: int | str
     ) -> ReturnCartS:
         cart: list[CartItem] = []
-        _ = await self.user_service.get_user_by_id(session=session, id=user_id)
+        _ = await self._user_service.get_user_by_id(session=session, id=user_id)
 
         try:
             cart: list[CartItem] = await self.cart_repo.get_cart_by_user_id(
@@ -133,7 +128,7 @@ class CartService(EntityBaseService):
                 # it is okay if there is no cart for a user
                 pass
 
-        shopping_session_id: ShoppingSessionIdS = await self.shopping_session_service.create_shopping_session(
+        shopping_session_id: ShoppingSessionIdS = await self._shopping_session_service.create_shopping_session(
             session=session,
             dto=CreateShoppingSessionS(
                 user_id=user_id,
@@ -141,7 +136,7 @@ class CartService(EntityBaseService):
             )
         )
 
-        shopping_session = await self.shopping_session_service.get_shopping_session_by_id(
+        shopping_session = await self._shopping_session_service.get_shopping_session_by_id(
             session=session,
             id=shopping_session_id.session_id
         )
@@ -179,16 +174,16 @@ class CartService(EntityBaseService):
             shopping_session_id: uuid_UUID,
             dto: AddBookToCartS,
     ) -> ReturnCartS:
-        """Adds a book to the cart / increments amount of ordered books"""
+        """Adds a book to the cart / increments the amount of books in a cart"""
         domain_model = CartItemS(
             **dto.model_dump(exclude_none=True),
             session_id=shopping_session_id
         )
 
-        book = await self.book_service.get_book_by_id(
+        book: Book = await self.book_repo.get_by_id(
             session=session,
-            id=dto.book_id
-        )  # if not exists, exception will be raised
+            id=domain_model.book_id
+        )
 
         if book.number_in_stock - domain_model.quantity < 0:
             raise BadRequest(
@@ -204,18 +199,18 @@ class CartService(EntityBaseService):
             """check if book already in the cart, if it is, then 
             decrease the number of books it stock and increase the number of books in the cart"""
 
-            book_domain_model: BookS = BookS.model_validate(
-                cart_item.book,
-                from_attributes=True
-            )
-            book_domain_model.price_with_discount = None
-            #  computed field, we have to set it to None to avoid an error here
-
             if str(cart_item.book_id) == str(domain_model.book_id):
                 cart_item_domain_model: CartItemS = CartItemS.model_validate(
                     cart_item,
                     from_attributes=True
                 )
+
+                book_domain_model: BookS = BookS.model_validate(
+                    cart_item.book,
+                    from_attributes=True
+                )
+                book_domain_model.price_with_discount = None
+                #  computed field, we have to set it to None to avoid an error here
 
                 try:
                     cart_item_domain_model.put_books_in_cart(
@@ -228,7 +223,9 @@ class CartService(EntityBaseService):
                         detail=e.info
                     )
 
-                async with self.uow as uow:
+                async with self._uow as uow:
+                    # update number_in_stock for the book
+                    # and increment the number of ordered books in a cart
                     await uow.update(
                         orm_model=CartItem,
                         obj=cart_item_domain_model
@@ -239,6 +236,7 @@ class CartService(EntityBaseService):
                     )
                     await uow.commit()
 
+                session.expire_all()
                 cart: ReturnCartS = await self.get_cart_by_session_id(
                     session=session,
                     shopping_session_id=shopping_session_id
@@ -249,7 +247,24 @@ class CartService(EntityBaseService):
             session=session,
             repo=self.cart_repo,
             domain_model=domain_model
-            )  # add book to the cart
+        )  # add book to the cart
+
+        book_domain_model: BookS = BookS.model_validate(book, from_attributes=True)
+
+        try:
+            book_domain_model.decrement_number_in_stock(val=domain_model.quantity)
+        except DecrementNumberInStockError as e:
+            raise BadRequest(detail=e.info)
+
+        async with self._uow as uow:
+            try:
+                await uow.update(
+                    orm_model=Book,
+                    obj=book_domain_model
+                )
+                await uow.commit()
+            except DBError:
+                raise ServerError()
 
         session.expire_all()  # clear session cache to get fresh data
         updated_cart: ReturnCartS = await self.get_cart_by_session_id(
@@ -257,21 +272,21 @@ class CartService(EntityBaseService):
             shopping_session_id=shopping_session_id
         )
 
-        if self.redis_con is not None:
+        if self._redis_con is not None:
             for cart_book in updated_cart.books:
                 if str(cart_book.book_id) == str(domain_model.book_id):
                     await serialize_and_store_cart_books(
                         book=cart_book,
-                        redis_con=self.redis_con
+                        redis_con=self._redis_con
                     )  # store book to redis cache
 
             cart_uq_key = f"cart:{shopping_session_id}"  # identifies of a set in cache
 
-            await self.redis_con.sadd(
+            await self._redis_con.sadd(
                 cart_uq_key,
                 str(domain_model.book_id)
             )  # update set of books in cache
-        logger.error("Failed to update cart in cache")
+            logger.error("Failed to update cart in cache")
 
         return updated_cart
 
@@ -283,7 +298,7 @@ class CartService(EntityBaseService):
 
     ) -> ReturnCartS:
 
-        _ = await self.book_service.get_book_by_id(
+        _ = await self._book_service.get_book_by_id(
             session=session,
             id=deletion_data.book_id
         )  # if not exists, exception will be raised
@@ -319,26 +334,28 @@ class CartService(EntityBaseService):
                 if cart_item_domain_model.quantity == 0:
                     # if the whole quantity of books should be deleted
                     try:
-                        async with self.uow as uow:
+                        async with self._uow as uow:
                             await uow.update(
                                 obj=book_domain_model,
                                 orm_model=Book
                             )
-
+                            cart_item_instance_to_delete = CartItem(
+                                session_id=cart_item_domain_model.session_id,
+                                book_id=book_domain_model.id,
+                            )
                             await uow.delete(
-                                obj=cart_item_domain_model,
-                                orm_model=CartItem
+                                orm_obj=cart_item_instance_to_delete
                             )
                             await uow.commit()
                     except DBError:
                         raise ServerError()
-                    logger.info("Books has been deleted from cart")
+                    logger.info("Book has been deleted from a cart")
                     break
 
                 else:
                     # if part of books should be deleted
                     try:
-                        async with self.uow as uow:
+                        async with self._uow as uow:
                             await uow.update(
                                 obj=book_domain_model,
                                 orm_model=Book
@@ -351,7 +368,7 @@ class CartService(EntityBaseService):
                             await uow.commit()
                     except DBError:
                         raise ServerError()
-                    logger.info("Book has been updated in cart")
+                    logger.info("Book has been updated in a cart")
                     break
 
         session.expire_all()  # clear session cache to get fresh data
@@ -360,11 +377,10 @@ class CartService(EntityBaseService):
             shopping_session_id=shopping_session_id
         )
 
-        uq_book_name = f"book:{deletion_data.book_id}"
-
-        if self.redis_con:
+        if self._redis_con:
+            uq_book_name = f"book:{deletion_data.book_id}"
             try:
-                await self.redis_con.srem(
+                await self._redis_con.srem(
                     uq_book_name,
                     str(deletion_data.book_id)
                 )  # delete book from cache
@@ -380,6 +396,3 @@ class CartService(EntityBaseService):
                 )
 
         return cart
-
-
-

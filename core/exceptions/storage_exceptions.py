@@ -25,7 +25,7 @@ class NotFoundError(Exception):
 
 
 class DeletionError(Exception):
-    def __init__(self, entity, info):
+    def __init__(self, entity):
         self.entity = entity
 
     def __str__(self):

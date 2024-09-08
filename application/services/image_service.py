@@ -24,18 +24,18 @@ class ImageService(EntityBaseService):
             OrmEntityRepoInterface, Depends(ImageRepository)
         ],
         storage_service: Annotated[StorageServiceInterface, Depends(InternalStorageService)],
-        book_service: BookService = Depends(),
+        book_service: Annotated[BookService, Depends(BookService)],
     ):
         super().__init__(repository=image_repo)
-        self.image_repo = image_repo
-        self.book_service = book_service
-        self.storage_service = storage_service
+        self._image_repo = image_repo
+        self._book_service = book_service
+        self._storage_service = storage_service
 
     async def get_all_images(
         self, session: AsyncSession, book_id: str | int
     ) -> list[ReturnImageS]:
         return await super().get_all(
-            session=session, repo=self.image_repo, book_id=book_id
+            session=session, repo=self._image_repo, book_id=book_id
         )
 
     async def upload_image(
@@ -44,7 +44,7 @@ class ImageService(EntityBaseService):
         book_id: UUID,
         image: UploadFile,
     ):
-        book: ReturnBookS | None = await self.book_service.get_book_by_id(
+        book: ReturnBookS | None = await self._book_service.get_book_by_id(
             session=session,
             id=book_id
         )
@@ -52,7 +52,7 @@ class ImageService(EntityBaseService):
         if not book:
             raise RelatedEntityDoesNotExist(entity="Book")
 
-        image_data: CreateImageS = await self.storage_service.upload_image(
+        image_data: CreateImageS = await self._storage_service.upload_image(
             image=image, instance_id=book_id
         )
         image_data: dict = image_data.model_dump(exclude_unset=True)
@@ -69,7 +69,7 @@ class ImageService(EntityBaseService):
 
         if image_data:
             await super().create(
-                repo=self.image_repo,
+                repo=self._image_repo,
                 session=session,
                 domain_model=domain_model
             )
@@ -77,7 +77,7 @@ class ImageService(EntityBaseService):
 
     async def delete_image(self, session: AsyncSession, image_id: int) -> None:
         image: list[ReturnImageS] = await super().get_all(
-            repo=self.image_repo, session=session, id=image_id
+            repo=self._image_repo, session=session, id=image_id
         )
 
         if not image:
@@ -85,11 +85,11 @@ class ImageService(EntityBaseService):
         image_url: str = image[0].url
 
         _ = await super().delete(
-            repo=self.image_repo, session=session, instance_id=image[0].id
+            repo=self._image_repo, session=session, instance_id=image[0].id
         )  # if no exception was raised
 
         try:
-            await self.storage_service.delete_image(
+            self._storage_service.delete_image(
                 image_url=image_url, image_id=image_id
             )
         except (RemoteBucketDeletionError, DeletionError):
@@ -97,4 +97,3 @@ class ImageService(EntityBaseService):
             raise ServerError(detail="Something went wrong while deleting")
 
         await super().commit(session=session)
-

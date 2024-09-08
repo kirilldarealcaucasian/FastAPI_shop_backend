@@ -26,7 +26,7 @@ class ShoppingSessionService(EntityBaseService):
                 CombinedShoppingSessionRepositoryInterface, Depends(ShoppingSessionRepository)]
     ):
         super().__init__(shopping_session_repo=shopping_session_repo)
-        self.shopping_session_repo = shopping_session_repo
+        self._shopping_session_repo: CombinedShoppingSessionRepositoryInterface = shopping_session_repo
 
     async def get_shopping_session_by_id(
             self,
@@ -35,7 +35,7 @@ class ShoppingSessionService(EntityBaseService):
     ) -> ReturnShoppingSessionS:
         shopping_session: ShoppingSession = await super().get_by_id(
             session=session,
-            repo=self.shopping_session_repo,
+            repo=self._shopping_session_repo,
             id=id
         )
         logger.debug("ShoppingSession: ", extra={"shopping_session: ": shopping_session})
@@ -52,7 +52,7 @@ class ShoppingSessionService(EntityBaseService):
             id: UUID
     ) -> ShoppingSession:
         try:
-            return await self.shopping_session_repo.get_shopping_session_with_details(
+            return await self._shopping_session_repo.get_shopping_session_with_details(
                 session=session,
                 id=id
             )
@@ -84,7 +84,7 @@ class ShoppingSessionService(EntityBaseService):
 
         session_id = await super().create(
             session=session,
-            repo=self.shopping_session_repo,
+            repo=self._shopping_session_repo,
             domain_model=domain_model
         )
 
@@ -111,7 +111,7 @@ class ShoppingSessionService(EntityBaseService):
 
         return await super().update(
             session=session,
-            repo=self.shopping_session_repo,
+            repo=self._shopping_session_repo,
             instance_id=id,
             domain_model=domain_model
         )

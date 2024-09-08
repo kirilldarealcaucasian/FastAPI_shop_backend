@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Protocol, TypeVar
+from typing import Protocol, TypeVar, TypeAlias, Optional, Union
 
 __all__ = (
     "OrmEntityRepoInterface"
@@ -14,8 +14,8 @@ class OrmEntityRepoInterface(Protocol):
 
     async def create(
             self,
-            domain_model: DomainModelDataT,
-            session: AsyncSession
+            session: AsyncSession,
+            domain_model: DomainModelDataT
     ):
         ...
 

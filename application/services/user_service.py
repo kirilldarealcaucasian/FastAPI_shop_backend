@@ -4,9 +4,9 @@ from fastapi import Depends
 from pydantic import ValidationError, PydanticSchemaGenerationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.repositories.user_repo import UnitedUserInterface
+from application.repositories.user_repo import CombinedUserInterface
 from application.schemas.domain_model_schemas import UserS
-from application.repositories import UserRepository
+from application.repositories.user_repo import UserRepository
 from application.schemas import (
     ReturnUserS,
     UpdateUserS,
@@ -23,9 +23,9 @@ from core.entity_base_service import EntityBaseService
 class UserService(EntityBaseService):
     def __init__(
         self,
-        user_repo: Annotated[UnitedUserInterface, Depends(UserRepository)],
+        user_repo: Annotated[CombinedUserInterface, Depends(UserRepository)],
     ):
-        self.user_repo = user_repo
+        self._user_repo: CombinedUserInterface = user_repo
         super().__init__(user_repo=user_repo)
 
     async def get_all_users(
@@ -33,7 +33,7 @@ class UserService(EntityBaseService):
     ) -> list[ReturnUserS] | ReturnUserS:
         try:
             users = await super().get_all(
-                repo=self.user_repo,
+                repo=self._user_repo,
                 session=session,
                 page=pagination.page,
                 limit=pagination.limit,
@@ -49,7 +49,7 @@ class UserService(EntityBaseService):
     ) -> ReturnUserS:
         try:
             user: ReturnUserS | None = await super().get_by_id(
-                repo=self.user_repo,
+                repo=self._user_repo,
                 session=session,
                 id=id
             )
@@ -61,7 +61,7 @@ class UserService(EntityBaseService):
         self, session: AsyncSession, user_id: str | int
     ) -> None:
         await super().delete(
-            repo=self.user_repo, session=session, instance_id=user_id
+            repo=self._user_repo, session=session, instance_id=user_id
         )
         await super().commit(session=session)
 
@@ -87,7 +87,7 @@ class UserService(EntityBaseService):
 
         return await super().update(
             session=session,
-            repo=self.user_repo,
+            repo=self._user_repo,
             instance_id=user_id,
             domain_model=domain_model
         )
@@ -95,7 +95,7 @@ class UserService(EntityBaseService):
     async def get_user_with_orders(
         self, session: AsyncSession, user_id: int
     ) -> ReturnUserWithOrdersS:
-        return await self.user_repo.get_user_with_orders(
+        return await self._user_repo.get_user_with_orders(
             session=session, user_id=user_id
         )
 
@@ -104,6 +104,6 @@ class UserService(EntityBaseService):
         session: AsyncSession,
         order_id: int,
     ) -> ReturnUserS:
-        return await self.user_repo.get_user_by_order_id(
+        return await self._user_repo.get_user_by_order_id(
             session=session, order_id=order_id
         )

@@ -1,5 +1,7 @@
 from pydantic import BaseModel, UUID4, Field
 
+from core.exceptions import DecrementNumberInStockError
+
 
 class BookS(BaseModel, validate_assignment=True):
     id: UUID4 | None = None
@@ -15,3 +17,12 @@ class BookS(BaseModel, validate_assignment=True):
         default=lambda model: model.price_per_unit - (model.discount * 0.01) * model.price_per_unit
     )
 
+    def decrement_number_in_stock(self, val: int):
+        if self.number_in_stock - val < 0:
+            raise DecrementNumberInStockError(
+                info="You're trying to order more books that available"
+            )
+        self.number_in_stock -= val
+
+    def increment_number_in_stock(self, val: int):
+        self.number_in_stock += val

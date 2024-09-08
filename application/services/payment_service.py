@@ -41,15 +41,15 @@ class PaymentService(EntityBaseService):
                 CombinedPaymentDetailRepoInterface, Depends(PaymentDetailRepository)
             ]
     ):
-        self.payment_provider = payment_provider
+        self.payment_provider: PaymentProviderInterface = payment_provider
         super().__init__(
             shopping_session_repo=shopping_session_repo,
             cart_repo=cart_repo,
             payment_detail_repo=payment_detail_repo
         )
-        self.shopping_session_repo = shopping_session_repo
-        self.cart_repo = cart_repo
-        self.payment_detail_repo = payment_detail_repo
+        self._shopping_session_repo: CombinedShoppingSessionRepositoryInterface = shopping_session_repo
+        self._cart_repo: CombinedCartRepositoryInterface = cart_repo
+        self._payment_detail_repo: CombinedPaymentDetailRepoInterface = payment_detail_repo
 
     async def make_payment(
             self,
@@ -62,12 +62,12 @@ class PaymentService(EntityBaseService):
         payment url and starts polling
         asynchronously for payment status in the background
         """
-        shopping_session: ShoppingSession = await self.shopping_session_repo.get_by_id(
+        shopping_session: ShoppingSession = await self._shopping_session_repo.get_by_id(
             session=session,
             id=shopping_session_id
         )
 
-        cart: list[CartItem] = await self.cart_repo.get_cart_by_session_id(
+        cart: list[CartItem] = await self._cart_repo.get_cart_by_session_id(
             session=session,
             cart_session_id=shopping_session_id
         )
@@ -126,7 +126,7 @@ class PaymentService(EntityBaseService):
 
         _ = await super().create(
             session=session,
-            repo=self.payment_detail_repo,
+            repo=self._payment_detail_repo,
             domain_model=domain_model
         )  # create PaymentDetail, if sth is wrong http_exception is raised
 

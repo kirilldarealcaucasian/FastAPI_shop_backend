@@ -6,10 +6,11 @@ from sqlalchemy.orm import selectinload
 
 from application import Book
 from application.models import CartItem, ShoppingSession
+from application.schemas import CartPrimaryIdentifier
+from application.schemas.domain_model_schemas import CartItemS
 from core import OrmEntityRepository
 from core.base_repos import OrmEntityRepoInterface
-from typing import Protocol, Union
-from application.schemas.domain_model_schemas import BookS
+from typing import Protocol, Union, TypeAlias, Optional
 from core.exceptions import NotFoundError, DBError
 from logger import logger
 
@@ -25,15 +26,8 @@ class CartRepositoryInterface(Protocol):
     async def get_cart_by_user_id(
             self,
             session: AsyncSession,
-            user_id: int | str,
+            user_id: int,
     ) -> list[CartItem]:
-        ...
-
-    async def add_book_to_cart_by_session_id(
-            self,
-            session_id: str,
-            domain_model: BookS
-    ) -> None:
         ...
 
     async def delete_book_from_cart_by_session_id(
@@ -41,7 +35,7 @@ class CartRepositoryInterface(Protocol):
             session: AsyncSession,
             session_id: UUID,
             book_id: UUID,
-    ):
+    ) -> None:
         ...
 
     async def delete_cart_by_shopping_session_id(
@@ -49,10 +43,18 @@ class CartRepositoryInterface(Protocol):
             session: AsyncSession,
             shopping_session_id: UUID
     ) -> None:
-        pass
+        ...
 
 
-CombinedCartRepositoryInterface = Union[CartRepositoryInterface, OrmEntityRepoInterface]
+class CombinedCartRepositoryInterface(
+    CartRepositoryInterface,
+    OrmEntityRepoInterface,
+    Protocol
+):
+    pass
+
+
+Id: TypeAlias = Optional[Union[str, int, UUID]]
 
 
 class CartRepository(OrmEntityRepository):
@@ -139,3 +141,21 @@ class CartRepository(OrmEntityRepository):
         except SQLAlchemyError as e:
             raise DBError(traceback=str(e))
         await session.commit()
+
+    async def create(
+            self,
+            session: AsyncSession,
+            domain_model: CartItemS,
+    ) -> CartPrimaryIdentifier:
+
+        cart_item_domain_model: CartItemS = await super().create(
+            session=session,
+            domain_model=domain_model
+        )
+
+        res = CartPrimaryIdentifier(
+            book_id=cart_item_domain_model.book_id,
+            session_id=cart_item_domain_model.session_id
+        )
+
+        return res

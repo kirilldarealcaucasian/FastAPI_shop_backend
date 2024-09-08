@@ -21,16 +21,16 @@ class PublisherService(EntityBaseService):
         ],
     ):
         super().__init__(publisher_repo=publisher_repo)
-        self.publisher_repo = publisher_repo
+        self._publisher_repo = publisher_repo
 
     async def get_all_publishers(self, session: AsyncSession):
-        return super().get_all(repo=self.publisher_repo, session=session)
+        return super().get_all(repo=self._publisher_repo, session=session)
 
     async def get_publishers_by_filters(
         self, session: AsyncSession, **filters
     ) -> list[ReturnPublisherS]:
         return await super().get_all(
-            repo=self.publisher_repo, session=session, **filters
+            repo=self._publisher_repo, session=session, **filters
         )
 
     async def create_publisher(
@@ -50,7 +50,7 @@ class PublisherService(EntityBaseService):
             raise DomainModelConversionError
 
         id = await super().create(
-            repo=self.publisher_repo,
+            repo=self._publisher_repo,
             session=session,
             domain_model=domain_model
         )
@@ -64,6 +64,6 @@ class PublisherService(EntityBaseService):
         self, session: AsyncSession, publisher_id: int
     ) -> None:
         await super().delete(
-            repo=self.publisher_repo, session=session, instance_id=publisher_id
+            repo=self._publisher_repo, session=session, instance_id=publisher_id
         )
         await super().commit(session=session)

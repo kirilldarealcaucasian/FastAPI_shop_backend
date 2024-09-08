@@ -73,10 +73,12 @@ class OrderService(EntityBaseService):
         payment_detail_repo: Annotated[
             CombinedPaymentDetailRepoInterface, Depends(PaymentDetailRepository)
         ],
-        book_service: BookService = Depends(),
-        user_service: UserService = Depends(),
-        cart_service: CartService = Depends(),
-        shopping_session_service: ShoppingSessionService = Depends()
+        book_service: Annotated[BookService, Depends(BookService)],
+        user_service: Annotated[UserService, Depends(UserService)],
+        cart_service: Annotated[CartService, Depends(CartService)],
+        shopping_session_service: Annotated[
+            ShoppingSessionService, Depends(ShoppingSessionService)
+        ],
     ):
         super().__init__(
             payment_detail_repo=payment_detail_repo,
@@ -84,16 +86,16 @@ class OrderService(EntityBaseService):
             order_repo=order_repo,
             book_order_assoc_repo=book_order_assoc_repo
         )
-        self.order_repo = order_repo
-        self.book_repo = book_repo
-        self.user_service = user_service
-        self.book_service = book_service
-        self.shopping_session_service = shopping_session_service
-        self.cart_service = cart_service
-        self.cart_repo = cart_repo
-        self.book_order_assoc_repo = book_order_assoc_repo
-        self.shopping_session_repo = shopping_session_repo
-        self.payment_detail_repo = payment_detail_repo
+        self._order_repo = order_repo
+        self._book_repo = book_repo
+        self._user_service = user_service
+        self._book_service = book_service
+        self._shopping_session_service = shopping_session_service
+        self._cart_service = cart_service
+        self._cart_repo = cart_repo
+        self._book_order_assoc_repo = book_order_assoc_repo
+        self._shopping_session_repo = shopping_session_repo
+        self._payment_detail_repo = payment_detail_repo
 
     async def create_order(
         self, session: AsyncSession, dto: CreateOrderS
@@ -110,12 +112,12 @@ class OrderService(EntityBaseService):
             )
             raise DomainModelConversionError
 
-        _ = await self.user_service.get_user_by_id(
+        _ = await self._user_service.get_user_by_id(
             session=session, id=domain_model.user_id
         )  # if no exception was raised
 
         order_id: int = await super().create(
-            repo=self.order_repo,
+            repo=self._order_repo,
             session=session,
             domain_model=domain_model
         )
@@ -129,7 +131,7 @@ class OrderService(EntityBaseService):
     async def get_all_orders(
         self, session: AsyncSession, pagination: PaginationS
     ) -> list[ShortenedReturnOrderS]:
-        orders: list[Order] = await self.order_repo.get_all_orders(
+        orders: list[Order] = await self._order_repo.get_all_orders(
             session=session,
             page=pagination.page,
             limit=pagination.limit,
@@ -159,7 +161,7 @@ class OrderService(EntityBaseService):
 
         order_details: list[BookOrderAssoc] = await super().get_by_id(
             session=session,
-            repo=self.order_repo,
+            repo=self._order_repo,
             id=order_id
         )
 
@@ -178,7 +180,7 @@ class OrderService(EntityBaseService):
         order_details: Union[BookOrderAssoc, None] = None
 
         try:
-            order_details: list[BookOrderAssoc] = await self.order_repo.get_orders_by_user_id(
+            order_details: list[BookOrderAssoc] = await self._order_repo.get_orders_by_user_id(
                 session=session, user_id=user_id
             )  # details of orders made by a user
             logger.debug(
@@ -221,7 +223,7 @@ class OrderService(EntityBaseService):
             order_id: str | int
     ) -> None:
         await super().delete(
-            repo=self.order_repo, session=session, instance_id=order_id
+            repo=self._order_repo, session=session, instance_id=order_id
         )
         await super().commit(session=session)
 
@@ -243,7 +245,7 @@ class OrderService(EntityBaseService):
             raise DomainModelConversionError()
 
         return await super().update(
-            repo=self.order_repo,
+            repo=self._order_repo,
             session=session,
             instance_id=order_id,
             domain_model=domain_model,
@@ -257,11 +259,11 @@ class OrderService(EntityBaseService):
     ) -> ReturnOrderS:
         order_books: list[BookOrderAssoc] = await super().get_by_id(
             session=session,
-            repo=self.order_repo,
+            repo=self._order_repo,
             id=order_id,
         )  # if no order http_exception will be raised
 
-        book: Book = await self.book_repo.get_by_id(
+        book: Book = await self._book_repo.get_by_id(
             session=session,
             id=dto.book_id
         )  # if no book http_exception will be raised
@@ -295,7 +297,7 @@ class OrderService(EntityBaseService):
 
         _ = await super().create(
             session=session,
-            repo=self.book_order_assoc_repo,
+            repo=self._book_order_assoc_repo,
             domain_model=domain_model
         )
 
@@ -314,14 +316,14 @@ class OrderService(EntityBaseService):
         try:
             _: list[BookOrderAssoc] = await super().get_by_id(
                 session=session,
-                repo=self.order_repo,
+                repo=self._order_repo,
                 id=order_id
             )
         except EntityDoesNotExist:
             raise EntityDoesNotExist("Book (in the order)")
 
         try:
-            await self.order_repo.delete_book_from_order_by_id(
+            await self._order_repo.delete_book_from_order_by_id(
                 session=session,
                 book_id=book_id,
                 order_id=order_id
@@ -344,12 +346,12 @@ class OrderService(EntityBaseService):
         session: AsyncSession,
         order_id: int,
     ):
-        user: ReturnUserS = await self.user_service.get_user_by_order_id(
+        user: ReturnUserS = await self._user_service.get_user_by_order_id(
             session=session, order_id=order_id
         )
 
         user_with_orders: ReturnUserWithOrdersS = (
-            await self.user_service.get_user_with_orders(
+            await self._user_service.get_user_with_orders(
                 session=session, user_id=user.id
             )
         )
@@ -386,12 +388,12 @@ class OrderService(EntityBaseService):
          books to order, change status of payment, delete cart"""
         async with db_client.async_session() as session:
             if status == "success":
-                cart: ReturnCartS = await self.cart_service.get_cart_by_session_id(
+                cart: ReturnCartS = await self._cart_service.get_cart_by_session_id(
                     session=session,
                     shopping_session_id=shopping_session_id
                 )
 
-                await self.payment_detail_repo.update(
+                await self._payment_detail_repo.update(
                     session=session,
                     domain_model=PaymentDetailS(
                         status="success",
@@ -401,7 +403,7 @@ class OrderService(EntityBaseService):
 
                 print("UPDATED PAYMENT STATUS")
 
-                shopping_session: ReturnShoppingSessionS = await self.shopping_session_service.get_shopping_session_by_id(
+                shopping_session: ReturnShoppingSessionS = await self._shopping_session_service.get_shopping_session_by_id(
                     session=session,
                     id=shopping_session_id
                 )
@@ -432,7 +434,7 @@ class OrderService(EntityBaseService):
                 print("CREATED ORDER")
 
                 try:
-                    await self.book_order_assoc_repo.create_many(
+                    await self._book_order_assoc_repo.create_many(
                         session=session,
                         domain_models=domain_models
                     )  # take books from cart to order
@@ -446,9 +448,9 @@ class OrderService(EntityBaseService):
                     raise ServerError("Failed to create order")
 
             try:
-                await self.shopping_session_service.delete(
+                await self._shopping_session_service.delete(
                     session=session,
-                    repo=self.shopping_session_repo,
+                    repo=self._shopping_session_repo,
                     instance_id=shopping_session_id
                 )  # delete cart with its items
             except DBError:

@@ -1,4 +1,7 @@
 import os
+from typing import Annotated
+from uuid import UUID
+
 from fastapi import UploadFile, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,24 +19,26 @@ from celery.exceptions import TaskError
 
 
 class InternalStorageService(EntityBaseService):
-    # implements functionality for managing storage of images in the application/static/images folder
+    """implements functionality for managing storage of images
+    in the application/static/images folder"""
 
     def __init__(
             self,
-            book_repo: BookRepository = Depends(),
-            image_manager: ImageManager = Depends(),
+            book_repo: Annotated[BookRepository, Depends(BookRepository)],
+            image_manager: Annotated[ImageManager, Depends(ImageManager)],
     ):
-        self.book_repo = book_repo
+        self._book_repo: BookRepository = book_repo
         super().__init__(book_repo=book_repo)
-        self.__image_manager = image_manager
+        self._image_manager: ImageManager = image_manager
 
     async def upload_image(
             self,
-            instance_id: str | int,
+            instance_id: str | int | UUID,
             image: UploadFile,
     ) -> CreateImageS:
+        """Stores image in the project folder"""
         from application.tasks.tasks1 import upload_image
-        res: ImageData = await self.__image_manager(
+        res: ImageData = await self._image_manager(
             image=image, image_folder_name=instance_id
         )
 
@@ -67,7 +72,8 @@ class InternalStorageService(EntityBaseService):
 
         return CreateImageS(book_id=instance_id, url=image_url)
 
-    async def delete_image(self, image_url: str, image_id: int) -> None:
+    def delete_image(self, image_url: str, image_id: int) -> None:
+        """deletes image from the project folder"""
         try:
             image_path = os.path.join(image_url)
             os.remove(image_path)
@@ -82,31 +88,35 @@ class InternalStorageService(EntityBaseService):
                 entity="Image"
             )
 
-
     async def delete_instance_with_images(
             self,
-            instance_id: str,
+            instance_id: str | UUID | int,
             session: AsyncSession,
             delete_images: bool = False,
     ) -> None:
         from application.tasks.tasks1 import delete_all_images
         logger.debug("in delete_instance_with_images")
         if delete_images:
+            logger.debug("Deleting book with images")
+            # if an instance has images, and we have to delete everything
             _ = super().delete(
                     session=session,
-                    repo=self.book_repo,
+                    repo=self._book_repo,
                     instance_id=instance_id
             )  # if no exceptions was raised
             await super().commit(session=session)
+            logger.debug("Book instance has been successfully deleted from the db")
             delete_all_images.delay(instance_id)
         else:
+            # if we only need to delete instance from the db
             try:
                 await super().delete(
-                    repo=self.book_repo,
+                    repo=self._book_repo,
                     session=session,
                     instance_id=instance_id
                 )
                 await super().commit(session=session)
             except EntityDoesNotExist:
+                extra = {"instance_id": instance_id}
+                logger.debug("Book you want to delete doesn't exist", extra=extra)
                 raise EntityDoesNotExist(entity="Book")
-

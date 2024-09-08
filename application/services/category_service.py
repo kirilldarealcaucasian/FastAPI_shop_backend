@@ -21,14 +21,14 @@ class CategoryService(EntityBaseService):
         category_repo: Annotated[OrmEntityRepoInterface, Depends(CategoryRepository)],
     ):
         super().__init__(category_repo=category_repo)
-        self.category_repo = category_repo
+        self._category_repo = category_repo
 
     async def get_all_categories(
         self,
         session: AsyncSession
     ) -> list[ReturnCategoryS]:
         categories = await super().get_all(
-            repo=self.category_repo,
+            repo=self._category_repo,
             session=session,
             limit=1000,
         )
@@ -39,10 +39,10 @@ class CategoryService(EntityBaseService):
     async def get_category_by_id(
         self,
         session: AsyncSession,
-        id: int
+        id: int # noqa
     ) -> ReturnCategoryS:
         category:  ReturnCategoryS | None = await super().get_by_id(
-            repo=self.category_repo,
+            repo=self._category_repo,
             session=session,
             id=id
         )
@@ -54,7 +54,7 @@ class CategoryService(EntityBaseService):
         self, session: AsyncSession, category_id: int
     ) -> None:
         await super().delete(
-            repo=self.category_repo, session=session, instance_id=category_id
+            repo=self._category_repo, session=session, instance_id=category_id
         )
         await super().commit(session=session)
 
@@ -74,8 +74,8 @@ class CategoryService(EntityBaseService):
             )
             raise DomainModelConversionError
 
-        id = await super().create(
-            repo=self.category_repo,
+        id = await super().create(  # noqa
+            repo=self._category_repo,
             session=session,
             domain_model=domain_model
         )
@@ -103,7 +103,7 @@ class CategoryService(EntityBaseService):
             raise DomainModelConversionError
 
         return await super().update(
-            repo=self.category_repo,
+            repo=self._category_repo,
             session=session,
             instance_id=instance_id,
             domain_model=domain_model,

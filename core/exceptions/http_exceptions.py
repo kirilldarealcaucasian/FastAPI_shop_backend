@@ -10,8 +10,8 @@ __all__ = (
     "RepositoryResolutionError",
     "InvalidModelCredentials",
     "FilterError",
+    "BadRequest",
     "OrderingFilterError",
-    "BadRequest"
 )
 
 

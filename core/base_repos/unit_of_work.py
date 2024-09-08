@@ -1,10 +1,6 @@
 from typing import Protocol
 
-from sqlalchemy import delete, select, bindparam
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from core.exceptions import DBError
-from infrastructure.postgres import db_client
 from sqlalchemy.exc import SQLAlchemyError
 
 __all__ = (
@@ -17,13 +13,13 @@ from logger import logger
 
 class AbstractUnitOfWork(Protocol):
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self):
         ...
 
     async def __aenter__(self):
         ...
 
-    async def __aexit__(self, *args):
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
         ...
 
     async def add(self, obj, orm_model):
@@ -33,7 +29,7 @@ class AbstractUnitOfWork(Protocol):
         ...
 
     async def delete(self, obj, orm_model):
-        pass
+        ...
 
     async def commit(self):
         ...
@@ -45,6 +41,7 @@ class AbstractUnitOfWork(Protocol):
 class SqlAlchemyUnitOfWork:
 
     def __init__(self):
+        from infrastructure.postgres import db_client
         self._session = db_client.async_session()
 
     async def __aenter__(self):
@@ -76,9 +73,14 @@ class SqlAlchemyUnitOfWork:
         to_update = orm_model(**data)
         await self._session.merge(to_update)
 
-    async def delete(self, obj, orm_model):
-        stmt = delete(orm_model).where(orm_model.id == bindparam('id', obj.id))
-        await self._session.execute(stmt)
+    async def delete(
+            self,
+            orm_obj
+    ):
+        merged_obj = await self._session.merge(orm_obj)
+        if merged_obj not in self._session:
+            await self._session.add(merged_obj)
+        await self._session.delete(merged_obj)
 
     async def commit(self):
         try:

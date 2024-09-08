@@ -55,7 +55,7 @@
     "name": "Example book 2 ",
     "description": "example book 2",
     "price_per_unit": 500,
-    "number_in_stock": 222,
+    "number_in_stock": 200,
     "rating": 3,
     "discount": 0
   }

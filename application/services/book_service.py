@@ -4,7 +4,6 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.models import Book
-from application.repositories.book_repo import CombinedBookRepoInterface
 from core import EntityBaseService
 from core.base_repos import OrmEntityRepoInterface
 from core.exceptions import EntityDoesNotExist, DomainModelConversionError
@@ -27,6 +26,8 @@ from logger import logger
 
 
 class BookService(EntityBaseService):
+    from application.repositories.book_repo import CombinedBookRepoInterface
+
     def __init__(
             self,
             storage: Annotated[StorageServiceInterface, Depends(InternalStorageService)],
@@ -36,10 +37,10 @@ class BookService(EntityBaseService):
                 OrmEntityRepoInterface, Depends(ImageRepository)
             ],
     ):
-        self.book_repo = book_repo
-        self.image_repo = image_repo
         super().__init__(book_repo=book_repo, image_repo=image_repo)
-        self.storage: StorageServiceInterface = storage
+        self._book_repo = book_repo
+        self._image_repo = image_repo
+        self._storage: StorageServiceInterface = storage
 
     async def get_book_by_id(
             self,
@@ -48,7 +49,7 @@ class BookService(EntityBaseService):
     ) -> ReturnBookS:
         book: Book = await super().get_by_id(
             session=session,
-            repo=self.book_repo,
+            repo=self._book_repo,
             id=str(id)
         )
 
@@ -75,7 +76,7 @@ class BookService(EntityBaseService):
             filters: BookFilter,
             pagination: Pagination
     ) -> list[ReturnBookS]:
-        books: list[Book] = await self.book_repo.get_all_books(
+        books: list[Book] = await self._book_repo.get_all_books(
             session=session,
             filters=filters,
             pagination=pagination
@@ -116,7 +117,7 @@ class BookService(EntityBaseService):
             raise DomainModelConversionError()
 
         book_id: UUID = await super().create(
-                repo=self.book_repo,
+                repo=self._book_repo,
                 session=session,
                 domain_model=domain_model
             )
@@ -133,13 +134,13 @@ class BookService(EntityBaseService):
     ) -> None:
         try:
             _: list[ReturnImageS] = await super().get_all(
-                repo=self.image_repo, session=session, book_id=book_id
+                repo=self._image_repo, session=session, book_id=book_id
             )
         except EntityDoesNotExist:
-            return await self.storage.delete_instance_with_images(
+            return await self._storage.delete_instance_with_images(
                 delete_images=False, instance_id=book_id, session=session
             )
-        return await self.storage.delete_instance_with_images(
+        return await self._storage.delete_instance_with_images(
             delete_images=True, instance_id=book_id, session=session
         )
 
@@ -162,7 +163,7 @@ class BookService(EntityBaseService):
             raise DomainModelConversionError
 
         updated_book: Book = await super().update(
-                repo=self.book_repo,
+                repo=self._book_repo,
                 session=session,
                 instance_id=book_id,
                 domain_model=domain_model

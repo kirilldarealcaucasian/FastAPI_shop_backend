@@ -27,13 +27,13 @@ class AuthorService(EntityBaseService):
         ],
     ):
         super().__init__(auhor_repo=author_repo)
-        self.author_repo = author_repo
+        self._author_repo = author_repo
 
     async def get_all_authors(
         self, session: AsyncSession
     ) -> list[ReturnAuthorS]:
         return await super().get_all(
-            repo=self.author_repo,
+            repo=self._author_repo,
             session=session,
         )
 
@@ -41,7 +41,7 @@ class AuthorService(EntityBaseService):
         self, session: AsyncSession, **filters
     ) -> list[ReturnAuthorS]:
         return await super().get_all(
-            repo=self.author_repo, session=session, **filters
+            repo=self._author_repo, session=session, **filters
         )
 
     async def create_author(
@@ -60,14 +60,14 @@ class AuthorService(EntityBaseService):
             )
             raise DomainModelConversionError
 
-        await super().create(repo=self.author_repo, session=session, domain_model=domain_model)
+        await super().create(repo=self._author_repo, session=session, domain_model=domain_model)
         await super().commit(session=session)
 
     async def delete_author(
         self, session: AsyncSession, author_id: int
     ) -> None:
         await super().delete(
-            repo=self.author_repo, session=session, instance_id=author_id
+            repo=self._author_repo, session=session, instance_id=author_id
         )
         await super().commit(session=session)
 
@@ -86,7 +86,7 @@ class AuthorService(EntityBaseService):
             raise DomainModelConversionError
 
         await super().update(
-            repo=self.author_repo,
+            repo=self._author_repo,
             session=session,
             domain_model=domain_model,
             instance_id=author_id,

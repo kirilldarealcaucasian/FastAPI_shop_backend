@@ -3,11 +3,11 @@ from sqlalchemy.exc import SQLAlchemyError
 from typing_extensions import AsyncGenerator
 
 from asyncio import current_task
-
 from core.config import settings
 
 
 class PostgresClient:
+
     def __init__(self, url, echo: bool = False):
         from logger import logger
         try:

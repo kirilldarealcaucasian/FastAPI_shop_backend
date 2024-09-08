@@ -4,7 +4,7 @@ from sqlalchemy import select, and_, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy.exc import SQLAlchemyError
-from typing import Union, Protocol
+from typing import Protocol
 
 from application import Book
 from core import OrmEntityRepository
@@ -17,19 +17,24 @@ class ShoppingSessionRepoInterface(Protocol):
     async def get_by_id(
             self,
             session: AsyncSession,
-            id: UUID
+            id: UUID # noqa
     ) -> ShoppingSession:
         ...
 
     async def get_shopping_session_with_details(
             self,
             session: AsyncSession,
-            id: UUID
+            id: UUID  # noqa
     ) -> ShoppingSession:
         ...
 
 
-CombinedShoppingSessionRepositoryInterface = Union[OrmEntityRepoInterface, ShoppingSessionRepoInterface]
+class CombinedShoppingSessionRepositoryInterface(
+    OrmEntityRepoInterface,
+    ShoppingSessionRepoInterface,
+    Protocol
+):
+    pass
 
 
 class ShoppingSessionRepository(OrmEntityRepository):
@@ -38,7 +43,7 @@ class ShoppingSessionRepository(OrmEntityRepository):
     async def get_by_id(
         self,
         session: AsyncSession,
-        id: UUID
+        id: UUID  # noqa
     ) -> ShoppingSession:
         stmt = select(ShoppingSession).\
             options(
@@ -60,7 +65,7 @@ class ShoppingSessionRepository(OrmEntityRepository):
     async def get_shopping_session_with_details(
             self,
             session: AsyncSession,
-            id: UUID
+            id: UUID  # noqa
     ) -> ShoppingSession:
         stmt = select(ShoppingSession).join_from(
             ShoppingSession, CartItem, ShoppingSession.id == CartItem.session_id
@@ -91,7 +96,7 @@ class ShoppingSessionRepository(OrmEntityRepository):
     async def delete(
             self,
             session: AsyncSession,
-            instance_id: int | str
+            instance_id: int | str | UUID
     ) -> None:
         stmt = delete(ShoppingSession).where(ShoppingSession.id == str(instance_id))
         try:

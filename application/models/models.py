@@ -13,7 +13,7 @@ from sqlalchemy import (
     MetaData,
     Table,
     Column,
-    Integer
+    Integer, PrimaryKeyConstraint
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -52,7 +52,7 @@ convention = {
 }
 
 
-class Base(DeclarativeBase):
+class BaseWithoutId(DeclarativeBase):
     __abstract__ = True
 
     metadata = MetaData(naming_convention=convention)
@@ -66,6 +66,9 @@ class Base(DeclarativeBase):
     def __tablename__(self):
         return f"{self.__name__.lower()}s"
 
+
+class Base(BaseWithoutId):
+    __abstract__ = True
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
 
@@ -328,14 +331,9 @@ class ShoppingSession(Base, TimestampMixin):
             """
 
 
-class CartItem(Base, TimestampMixin):
-    __tablename__ = "cart_items"
+class CartItem(BaseWithoutId, TimestampMixin):
 
-    __table_args__ = (UniqueConstraint(
-        "session_id",
-        "book_id",
-        name="uq_cart_items_session_id_book_id"),
-    )
+    __tablename__ = "cart_items"
 
     session_id: Mapped[UUID] = mapped_column(ForeignKey("shopping_sessions.id",
                                                         ondelete="CASCADE",
@@ -345,15 +343,25 @@ class CartItem(Base, TimestampMixin):
                                                      ), primary_key=True)
     quantity: Mapped[int]
 
-    __mapper_args__ = {'primary_key': [session_id, book_id]}  # composite primary key
-
     # relationships
     book: Mapped["Book"] = relationship(back_populates="cart_items")
     shopping_session: Mapped["ShoppingSession"] = relationship(back_populates="cart_items")
 
+    __table_args__ = (
+        UniqueConstraint(
+            "session_id",
+            "book_id",
+            name="uq_cart_items_session_id_book_id"),
+        PrimaryKeyConstraint(
+            "session_id",
+            "book_id",
+            name="pk_cart_items"
+        )
+    )
+
     def __repr__(self):
         return f"""CartItem(
-            id={self.id},
+            "sessiob_id={self.session_id}
             book_id={self.book_id},
             quantity={self.quantity},
         )"""

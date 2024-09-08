@@ -1,14 +1,7 @@
 [
   {
-    "id": 1,
     "session_id": "01e1ca73-5dea-46f2-a19b-56b5a7804efc",
     "book_id": "20aaefdc-ab3b-4074-af87-dc26a36bb6a0",
-    "quantity": 0
-  },
-  {
-    "id": 2,
-    "session_id": "01e1ca73-5dea-46f2-a19b-56b5a7804efc",
-    "book_id": "d2bafd10-4192-4930-aa40-9bcf4b39a848",
-    "quantity": 0
+    "quantity": 5
   }
 ]

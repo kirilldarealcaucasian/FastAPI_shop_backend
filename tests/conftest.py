@@ -5,12 +5,14 @@ import pytest_asyncio
 import asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import insert
+
 from infrastructure.postgres import db_client
 from application.models import Base, User, Book, BookOrderAssoc, Author, Publisher, Order, Image, Category, \
     BookCategoryAssoc, CartItem, ShoppingSession
 from application.cmd import app
 from datetime import datetime
 import os
+
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
@@ -78,3 +80,4 @@ def event_loop() -> Generator:
     loop = asyncio.new_event_loop()
     yield loop
     loop.close()
+
