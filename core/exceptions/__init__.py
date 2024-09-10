@@ -20,7 +20,8 @@ __all__ = (
     "DeleteBooksFromCartError",
     "AddBooksToCartError",
     "DecrementNumberInStockError",
-    "BadRequest"
+    "BadRequest",
+    "PaymentFailedError",
 )
 
 from core.exceptions.storage_exceptions import (
@@ -41,7 +42,8 @@ from core.exceptions.http_exceptions import (
 
 from core.exceptions.payment_exceptions import (
     PaymentObjectCreationError,
-    PaymentRetrieveStatusError
+    PaymentRetrieveStatusError,
+    PaymentFailedError
 )
 
 from core.exceptions.domain_models_exceptions import (

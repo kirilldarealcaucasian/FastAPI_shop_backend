@@ -280,7 +280,7 @@ class CartService(EntityBaseService):
                         redis_con=self._redis_con
                     )  # store book to redis cache
 
-            cart_uq_key = f"cart:{shopping_session_id}"  # identifies of a set in cache
+            cart_uq_key = f"cart:{shopping_session_id}"  # identifier of a set in cache
 
             await self._redis_con.sadd(
                 cart_uq_key,

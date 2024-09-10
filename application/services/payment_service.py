@@ -70,7 +70,7 @@ class PaymentService(EntityBaseService):
             self,
             session: AsyncSession,
             shopping_session_id: UUID
-    ) -> ConfirmationURL:
+    ):
         """
         Retrieves cart items and information about the cart (ShoppingSession),
         creates PaymentDetail object, then calls to payment provider to get
@@ -99,7 +99,7 @@ class PaymentService(EntityBaseService):
         cart_owner: User = shopping_session.user
         cart_owner_full_name = " ".join([cart_owner.first_name, cart_owner.last_name])
 
-        order_items: list[OrderItemS] = []
+        order_items: list[OrderItemS] = []  # list of books that are going to be in the order
 
         for item in cart:
             book: Book = item.book
@@ -150,9 +150,11 @@ class PaymentService(EntityBaseService):
         )  # create PaymentDetail, if sth is wrong http_exception is raised
 
         logger.debug("Starting to check payment status . . .")
-        _ = asyncio.create_task(self._payment_provider.check_payment_status(
-            shopping_session_id=shopping_session_id,
-            payment_id=payment_creds.payment_id)
+        _ = asyncio.create_task(
+            self._payment_provider.check_payment_status(
+                shopping_session_id=shopping_session_id,
+                payment_id=payment_creds.payment_id)
         )  # schedule a task to the event loop so that it could execute in the "background"
 
         return payment_creds.confirmation_url
+

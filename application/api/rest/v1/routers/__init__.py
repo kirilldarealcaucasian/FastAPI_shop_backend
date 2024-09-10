@@ -1,4 +1,3 @@
-
 __all__ = (
     "image_router",
     "order_router",
@@ -9,7 +8,6 @@ __all__ = (
     "cart_router",
     "checkout_router"
 )
-
 
 from application.api.rest.v1.routers.image_routers import router as image_router
 from application.api.rest.v1.routers.order_routers import router as order_router

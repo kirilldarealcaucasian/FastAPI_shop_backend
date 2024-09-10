@@ -16,10 +16,10 @@ router = APIRouter(prefix="/v1/checkout", tags=["Checkout"])
 @router.get(
     "",
     status_code=status.HTTP_200_OK,
-    dependencies=[
-        Depends(PermissionService().get_cart_permission),
-        Depends(PermissionService().get_authorized_permission)
-    ],
+    # dependencies=[
+    #     Depends(PermissionService().get_cart_permission),
+    #     Depends(PermissionService().get_authorized_permission)
+    # ],
     response_model=None
 )
 async def make_payment(

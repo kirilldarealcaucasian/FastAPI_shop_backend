@@ -13,6 +13,7 @@ from application.services import BookService, ShoppingSessionService, UserServic
     PaymentService
 from application.services.storage.internal_storage.image_manager import ImageManager
 from core.base_repos.unit_of_work import SqlAlchemyUnitOfWork
+from core.exceptions import PaymentFailedError
 from infrastructure.payment.yookassa.app import YooKassaPaymentProvider
 from infrastructure.postgres.app import db_client
 from application.services.storage.internal_storage.internal_storage_service import InternalStorageService
@@ -22,7 +23,6 @@ from application.services.storage.internal_storage.internal_storage_service impo
 @pytest.fixture(scope="session")
 async def order_service(
 ) -> OrderService:
-
     uow = SqlAlchemyUnitOfWork()
 
     book_repo = BookRepository()
@@ -61,6 +61,7 @@ async def order_service(
         uow=uow
     )
 
+
     service = OrderService(
         order_repo=order_repo,
         book_repo=book_repo,
@@ -72,7 +73,7 @@ async def order_service(
         user_service=user_service,
         cart_service=cart_service,
         shopping_session_service=shopping_session_service,
-        uow=uow
+        uow=uow,
     )
     return service
 
@@ -80,10 +81,7 @@ async def order_service(
 @pytest.mark.asyncio
 @pytest.fixture(scope="session")
 async def payment_service(order_service: OrderService) -> PaymentService:
-
-    payment_provider = YooKassaPaymentProvider(
-        order_service=order_service
-    )
+    payment_provider = YooKassaPaymentProvider()
     shopping_session_repo = ShoppingSessionRepository()
     cart_repo = CartRepository()
     payment_detail_repo = PaymentDetailRepository()
@@ -166,11 +164,39 @@ async def test_perform_order(
 
     assert len(book_ids) == 1 and UUID("20aaefdc-ab3b-4074-af87-dc26a36bb6a0") in book_ids
 
+async def test_perform_order_with_failed_payment(
+        order_service: OrderService,
+        payment_service: PaymentService,
+        session: AsyncSession
+):
+    payment_id: UUID = uuid.uuid4()
 
+    payment_detail_repo = PaymentDetailRepository()
+    domain_model = PaymentDetailS(
+        id=payment_id,
+        status="pending",
+        payment_provider="yookassa",
+        amount=1000.0
+    )
 
+    await payment_detail_repo.create(
+        session=session,
+        domain_model=domain_model
+    )  # create fake payment
 
+    with pytest.raises(PaymentFailedError) as excval:
+        _ = await order_service.perform_order(
+            payment_id=payment_id,
+            shopping_session_id=UUID("01e1ca73-5dea-46f2-a19b-56b5a7804efc"),
+            status="failed",
+        )
 
+    assert "Payment was failed." in str(excval.value)
 
+    payment: PaymentDetailS = await payment_service.get_by_id(
+        repo=payment_service._payment_detail_repo,
+        session=session,
+        id=payment_id
+    )
 
-
-
+    assert payment.status == "failed"

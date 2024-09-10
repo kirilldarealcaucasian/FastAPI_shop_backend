@@ -1,14 +1,13 @@
 import asyncio
 import json
 import uuid
-from typing import Protocol, TypeAlias, Annotated
+from typing import Protocol, TypeAlias
 
-from fastapi import Depends
-from yookassa import Payment, Configuration
+from yookassa import Payment, Configuration, Refund
 from uuid import uuid4, UUID
 
 from application.schemas import CreatePaymentS, ReturnPaymentS
-from application.services.order_service.order_service import OrderService
+# from application.services.order_service.order_service import OrderService
 from core.config import settings
 
 __all__ = (
@@ -17,6 +16,8 @@ __all__ = (
 )
 
 from core.exceptions import PaymentObjectCreationError, PaymentRetrieveStatusError
+from core.payment_mediator.mediator_saver import InstanceMediatorSaver
+from core.payment_mediator.payment_events import PaymentEvents
 from logger import logger
 
 PaymentID: TypeAlias = str
@@ -37,20 +38,27 @@ class PaymentProviderInterface(Protocol):
             self,
             payment_id: str,
             shopping_session_id: UUID,
-    ) -> bool:
+    ):
+        ...
+
+    async def make_refund(
+            self, payment_id: UUID,
+            amount: float, description: str
+    ):
         ...
 
 
-class YooKassaPaymentProvider:
+class YooKassaPaymentProvider(InstanceMediatorSaver):
     """Interacts with external payment api"""
 
-    def __init__(
-            self,
-            order_service: Annotated[OrderService, Depends(OrderService)]
-    ):
-        Configuration.account_id = settings.YOOCASSA_ACCOUNT_ID
-        Configuration.secret_key = settings.YOOCASSA_SECRET_KEY
-        self._order_service = order_service
+    # def __init__(
+    #         self,
+    #         # order_service: Annotated[OrderService, Depends(OrderService)],
+    # ):
+
+    Configuration.account_id = settings.YOOCASSA_ACCOUNT_ID
+    Configuration.secret_key = settings.YOOCASSA_SECRET_KEY
+    # self._order_service = order_service
 
     def create_payment(
             self,
@@ -115,7 +123,7 @@ class YooKassaPaymentProvider:
             self,
             payment_id: str,
             shopping_session_id: UUID,
-    ) -> bool:
+    ) -> None:
         """makes requests to the payment provider to get payment status"""
         payment_status = self.get_payment_status(payment_id=payment_id)
 
@@ -128,11 +136,21 @@ class YooKassaPaymentProvider:
 
         if payment_status == "succeeded":
             logger.info("Payment succeeded!")
-            return await self._order_service.perform_order(
+            # MEDIATOR PAYMENT SUCCEEDED EVENT
+            ################################
+            await self.mediator.notify(
+                sender=self,
+                event=PaymentEvents.PAYMENT_SUCCEEDED.value,
                 payment_id=payment_id_to_uuid,
                 shopping_session_id=shopping_session_id,
                 status="success"
             )
+            #################################
+            # return await self._order_service.perform_order(
+            #     payment_id=payment_id_to_uuid,
+            #     shopping_session_id=shopping_session_id,
+            #     status="success"
+            # )
 
         else:
             extra = {
@@ -140,8 +158,32 @@ class YooKassaPaymentProvider:
                 "shopping_session_id": shopping_session_id
             }
             logger.info("Payment failed (was canceled / timed out)!", extra=extra)
-            return await self._order_service.perform_order(
+
+            await self.mediator.notify(
+                sender=self,
+                event=PaymentEvents.PAYMENT_FAILED.value,
                 payment_id=payment_id_to_uuid,
                 shopping_session_id=shopping_session_id,
                 status="failed"
-            )  # init a process of order creation
+            )
+            # return await self._order_service.perform_order(
+            #     payment_id=payment_id_to_uuid,
+            #     shopping_session_id=shopping_session_id,
+            #     status="failed"
+            # )  # init a process of order creation
+
+    async def make_refund(
+            self, payment_id: UUID,
+            amount: float, description: str
+    ):
+        res = Refund.create(
+            {
+                "payment_id": payment_id,
+                "description": description,
+                "amount": {
+                    "value": amount,
+                    "currency": "RUB"
+                },
+            }
+        )
+        print("REFUND RESULT: ", res.json())

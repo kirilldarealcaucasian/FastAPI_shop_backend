@@ -27,21 +27,6 @@ async def get_all_orders(
     return await service.get_all_orders(session=session, pagination=pagination)
 
 
-@router.get(
-    "/checkout",
-    dependencies=[Depends(PermissionService().get_cart_permission)]
-)
-async def perform_order(
-        shopping_session_id: UUID = Cookie(None),
-        service: OrderService = Depends(),
-        session: AsyncSession = Depends(db_client.get_scoped_session_dependency),
-):
-    return await service.perform_order(
-        session=session,
-        shopping_session_id=shopping_session_id
-    )
-
-
 @router.get("/{order_id}",
             status_code=status.HTTP_200_OK,
             response_model=ReturnOrderS,

@@ -8,7 +8,7 @@ __all__ = (
     "CategoryService",
     "ShoppingSessionService",
     "CartService",
-    "PaymentService"
+    "PaymentService",
 )
 
 from application.services.user_service import UserService
