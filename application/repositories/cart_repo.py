@@ -2,7 +2,7 @@ from uuid import UUID
 from sqlalchemy import select, delete, and_
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 
 from application import Book
 from application.models import CartItem, ShoppingSession
@@ -28,6 +28,13 @@ class CartRepositoryInterface(Protocol):
             session: AsyncSession,
             user_id: int,
     ) -> list[CartItem]:
+        ...
+
+    async def get_by_id(
+            self,
+            session: AsyncSession,
+            id: CartPrimaryIdentifier
+    ) -> CartItem:
         ...
 
     async def delete_book_from_cart_by_session_id(
@@ -72,6 +79,7 @@ class CartRepository(OrmEntityRepository):
         ).where(ShoppingSession.id == str(cart_session_id)).options(
             selectinload(CartItem.book).selectinload(Book.authors),
             selectinload(CartItem.book).selectinload(Book.categories),
+            selectinload(CartItem.shopping_session)
         )
 
         try:
@@ -83,6 +91,24 @@ class CartRepository(OrmEntityRepository):
             raise NotFoundError(entity="Cart")
 
         return list(cart)
+
+    async def get_by_id(self, session: AsyncSession, id: CartPrimaryIdentifier) -> CartItem:
+        stmt = select(CartItem).where(
+            and_(
+                CartItem.book_id == str(id.book_id),
+                CartItem.session_id == str(id.session_id)
+            )
+        ).options(
+            joinedload(CartItem.shopping_session)
+        )
+
+        try:
+            cart_item: Union[CartItem, None] = (await session.scalars(stmt)).one_or_none()
+        except SQLAlchemyError as e:
+            raise DBError(traceback=str(e))
+
+
+        return cart_item
 
     async def get_cart_by_user_id(
             self,

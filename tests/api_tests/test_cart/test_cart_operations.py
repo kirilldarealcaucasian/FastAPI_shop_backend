@@ -124,7 +124,7 @@ async def test_get_cart_by_session_id(
                     "book_id": "0b003aac-25dc-4fd6-8f89-e2ba796c6386",
                     "quantity": 100
                 },
-                409
+                400
         )
     ]
 )

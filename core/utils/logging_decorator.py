@@ -7,7 +7,7 @@ from logger import logger
 
 
 def perform_logging(func: Callable):
-    """Applies logging scenarios for generic functions"""
+    """Applies logging scenarios for a function"""
     @wraps(func)
     async def wrapper(*args, **kwargs):
         kwargs = dict(kwargs)

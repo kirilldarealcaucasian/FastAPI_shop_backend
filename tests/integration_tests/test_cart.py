@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.repositories import BookRepository, ImageRepository, CartRepository, ShoppingSessionRepository, \
-    UserRepository
+    UserRepository, OrderRepository
 from application.schemas import AddBookToCartS, ReturnCartS, ReturnBookS, DeleteBookFromCartS
 from application.schemas.order_schemas import AssocBookS
 from application.services import CartService, BookService, ShoppingSessionService, UserService
@@ -26,6 +26,7 @@ async def cart_service(
     image_repo = ImageRepository()
     cart_repo = CartRepository()
     user_repo = UserRepository()
+    order_repo = OrderRepository()
     shopping_session_repo = ShoppingSessionRepository()
     image_manager = ImageManager()
 
@@ -41,7 +42,8 @@ async def cart_service(
     shopping_session_service = ShoppingSessionService(
         shopping_session_repo=shopping_session_repo)
     user_service = UserService(
-        user_repo=user_repo
+        user_repo=user_repo,
+        order_repo=order_repo
     )
 
     service = CartService(
@@ -54,6 +56,14 @@ async def cart_service(
     )
     return service
 
+@pytest.mark.asyncio
+@pytest.fixture(scope="session")
+async def shopping_session_service() -> ShoppingSessionService:
+    shopping_session_repo = ShoppingSessionRepository()
+    service = ShoppingSessionService(
+        shopping_session_repo=shopping_session_repo
+    )
+    return service
 
 @pytest.mark.asyncio
 @pytest.fixture(scope="session")
@@ -66,6 +76,7 @@ async def session():
 async def test_add_book_to_cart_for_the_first_time(
         cart_service: CartService,
         session: AsyncSession,
+        shopping_session_service: ShoppingSessionService
 ):
     res: ReturnCartS = await cart_service.add_book_to_cart(
         session=session,
@@ -86,8 +97,8 @@ async def test_add_book_to_cart_for_the_first_time(
                 categories=['Category 1', 'Category 2'],
                 rating=5,
                 discount=0,
-                count_ordered=5,
-                price_per_unit=349.0
+                count_ordered=1,
+                price_per_unit=100
                 ),
             AssocBookS(
                 book_id=UUID('d2bafd10-4192-4930-aa40-9bcf4b39a848'),
@@ -104,8 +115,15 @@ async def test_add_book_to_cart_for_the_first_time(
     session.expire_all()
     book: ReturnBookS = await cart_service._book_service.get_book_by_id(
         session=session,
+
         id=UUID("d2bafd10-4192-4930-aa40-9bcf4b39a848")
     )
+    shopping_session = await shopping_session_service.get_shopping_session_by_id(
+        session=session,
+        id=UUID('01e1ca73-5dea-46f2-a19b-56b5a7804efc'),
+    )
+
+    assert shopping_session.total == 600
 
     assert book.number_in_stock == 199
 
@@ -114,6 +132,7 @@ async def test_add_book_to_cart_for_the_first_time(
 async def test_add_book_to_cart_for_the_second_time(
         cart_service: CartService,
         session: AsyncSession,
+        shopping_session_service: ShoppingSessionService
 ):
     res: ReturnCartS = await cart_service.add_book_to_cart(
         session=session,
@@ -134,8 +153,8 @@ async def test_add_book_to_cart_for_the_second_time(
                 categories=['Category 1', 'Category 2'],
                 rating=5,
                 discount=0,
-                count_ordered=5,
-                price_per_unit=349.0
+                count_ordered=1,
+                price_per_unit=100
             ),
             AssocBookS(
                 book_id=UUID('d2bafd10-4192-4930-aa40-9bcf4b39a848'),
@@ -153,6 +172,13 @@ async def test_add_book_to_cart_for_the_second_time(
         session=session,
         id=UUID("d2bafd10-4192-4930-aa40-9bcf4b39a848")
     )
+
+    shopping_session = await shopping_session_service.get_shopping_session_by_id(
+        session=session,
+        id=UUID('01e1ca73-5dea-46f2-a19b-56b5a7804efc'),
+    )
+
+    assert shopping_session.total == 1100
 
     assert book.number_in_stock == 198
 
@@ -179,6 +205,7 @@ async def test_add_more_books_than_in_stock(
 async def test_delete_book_from_cart(
         cart_service: CartService,
         session: AsyncSession,
+        shopping_session_service: ShoppingSessionService
 ):
     res: ReturnCartS = await cart_service.delete_book_from_cart(
         session=session,
@@ -199,8 +226,8 @@ async def test_delete_book_from_cart(
                 categories=['Category 1', 'Category 2'],
                 rating=5,
                 discount=0,
-                count_ordered=5,
-                price_per_unit=349.0
+                count_ordered=1,
+                price_per_unit=100
             ),
             AssocBookS(
                 book_id=UUID('d2bafd10-4192-4930-aa40-9bcf4b39a848'),
@@ -220,13 +247,20 @@ async def test_delete_book_from_cart(
         id=UUID("d2bafd10-4192-4930-aa40-9bcf4b39a848")
     )
 
+    shopping_session = await shopping_session_service.get_shopping_session_by_id(
+        session=session,
+        id=UUID('01e1ca73-5dea-46f2-a19b-56b5a7804efc'),
+    )
+
+    assert shopping_session.total == 600
     assert book.number_in_stock == 199
 
 
 @pytest.mark.asyncio(scope="session")
-async def test_delete_the_whole_number_of_books_from_cart(
+async def test_delete_all_books_from_cart(
         cart_service: CartService,
         session: AsyncSession,
+        shopping_session_service: ShoppingSessionService
 ):
     res: ReturnCartS = await cart_service.delete_book_from_cart(
         session=session,
@@ -247,8 +281,8 @@ async def test_delete_the_whole_number_of_books_from_cart(
                 categories=['Category 1', 'Category 2'],
                 rating=5,
                 discount=0,
-                count_ordered=5,
-                price_per_unit=349.0
+                count_ordered=1,
+                price_per_unit=100
             ),
         ])
 
@@ -258,6 +292,11 @@ async def test_delete_the_whole_number_of_books_from_cart(
         id=UUID("d2bafd10-4192-4930-aa40-9bcf4b39a848")
     )
 
+    shopping_session = await shopping_session_service.get_shopping_session_by_id(
+        session=session,
+        id=UUID('01e1ca73-5dea-46f2-a19b-56b5a7804efc'),
+    )
+    assert shopping_session.total == 100
     assert book.number_in_stock == 200
 
 

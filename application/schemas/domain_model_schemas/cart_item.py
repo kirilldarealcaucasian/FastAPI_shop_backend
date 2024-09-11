@@ -1,7 +1,8 @@
 from pydantic import BaseModel, Field, ConfigDict
 from uuid import UUID
 
-from application.schemas.domain_model_schemas import BookS
+from application.schemas.domain_model_schemas.book import BookS
+from application.schemas.domain_model_schemas.shopping_session import ShoppingSessionS
 from core.exceptions import DeleteBooksFromCartError, AddBooksToCartError
 
 
@@ -15,7 +16,8 @@ class CartItemS(BaseModel):
     def remove_books_from_cart(
             self,
             quantity,
-            book: BookS
+            book: BookS,
+            shopping_session: ShoppingSessionS
     ):
         if self.quantity - quantity < 0:
             raise DeleteBooksFromCartError(
@@ -23,18 +25,23 @@ class CartItemS(BaseModel):
             )
         self.quantity -= quantity
         book.number_in_stock += quantity
+        shopping_session.total -= book.price_with_discount
 
     def put_books_in_cart(
             self,
             quantity: int,
-            book: BookS
+            book: BookS,
+            shopping_session: ShoppingSessionS
     ):
         if book.number_in_stock - quantity < 0:
             raise AddBooksToCartError(
                 info="You're trying to add more books that there are in stock"
             )
+        print("QUANTITY DO IN put_books_in_cart: ", self.quantity)
         self.quantity += quantity
         book.number_in_stock -= quantity
+        shopping_session.total += book.price_with_discount
+
 
 
 

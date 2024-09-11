@@ -1,10 +1,14 @@
-from pydantic import BaseModel, UUID4, Field
+from uuid import UUID
+
+from pydantic import BaseModel, Field, ConfigDict
 
 from core.exceptions import DecrementNumberInStockError
 
 
 class BookS(BaseModel, validate_assignment=True):
-    id: UUID4 | None = None
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID | None = None
     isbn: str | None = None
     name: str | None = None
     description: str | None = None

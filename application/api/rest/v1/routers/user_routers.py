@@ -10,7 +10,7 @@ from infrastructure.postgres import db_client
 
 from application.schemas import (UpdateUserS,
                                  UpdatePartiallyUserS,
-                                 ReturnUserS
+                                 ReturnUserS, ReturnUserWithOrdersS
                                  )
 from auth.services.permission_service import PermissionService
 from core.utils.cache import cachify
@@ -32,7 +32,7 @@ async def get_all_users(
 
 @router.get("/{user_id}",
             status_code=status.HTTP_200_OK,
-            response_model=list[ReturnUserS] | None,
+            response_model=ReturnUserS,
             dependencies=[Depends(PermissionService.get_admin_permission)])
 @cachify(ReturnUserS, cache_time=timedelta(seconds=10))
 async def get_user_by_id(
@@ -43,15 +43,28 @@ async def get_user_by_id(
     return await service.get_user_by_id(session=session, id=user_id)
 
 
-# @router.get(
-#     "/{user_id}/orders", status_code=status.HTTP_200_OK,
-#     response_model=ReturnUserWithOrderS)
-# async def get_user_with_orders(
-#         user_id: int,
-#         service: UserService = Depends(),
-#         session: AsyncSession = Depends(db_config.get_scoped_session_dependency)
-# ):
-#     return await service.get_user_with_orders(session=session, user_id=user_id)
+@router.get(
+    "/{user_id}/orders", status_code=status.HTTP_200_OK,
+    response_model=ReturnUserWithOrdersS
+)
+async def get_user_with_orders(
+        user_id: int,
+        service: UserService = Depends(),
+        session: AsyncSession = Depends(db_client.get_scoped_session_dependency)
+):
+    return await service.get_user_with_orders(session=session, user_id=user_id)
+
+
+@router.get(
+    "/{order_id}/orders", status_code=status.HTTP_200_OK,
+    response_model=ReturnUserS
+)
+async def get_user_by_order_id(
+        order_id: int,
+        service: UserService = Depends(),
+        session: AsyncSession = Depends(db_client.get_scoped_session_dependency)
+):
+    return await service.get_user_by_order_id(session=session, order_id=order_id)
 
 
 @router.delete('/{user_id}',

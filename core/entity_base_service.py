@@ -32,7 +32,7 @@ from application.schemas import (
     CreateCategoryS, ReturnCategoryS,
     ReturnShoppingSessionS, ShoppingSessionIdS,
     CreateShoppingSessionS,
-    UpdatePartiallyShoppingSessionS, BookIdS
+    UpdatePartiallyShoppingSessionS, BookIdS, CartPrimaryIdentifier
 )
 from application.schemas.domain_model_schemas import \
     (
@@ -89,6 +89,10 @@ DomainModelDataT = TypeVar(
     OrderS, PaymentDetailS, PublisherS,
     ShoppingSessionS, ImageS
 )
+
+MergedDataT = TypeVar("MergedDataT", )
+
+IdentityDataT = TypeVar("IdentityDataT", str, int, UUID, CartPrimaryIdentifier)
 
 RepoInterface = TypeVar("RepoInterface")
 
@@ -181,7 +185,7 @@ class EntityBaseService(
             self,
             session: AsyncSession,
             repo: RepoInterface,
-            id: int | str | UUID,
+            id: IdentityDataT,
     ) -> ReturnDataT:
         return await self.repository_resolver(repo).get_by_id(id=id, session=session)
 

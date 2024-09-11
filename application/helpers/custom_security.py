@@ -5,8 +5,6 @@ from fastapi.requests import Request
 from fastapi.exceptions import HTTPException
 
 
-
-
 class CustomSecurity(HTTPBearer):
     # from logger import logger
     """if there is no token in the header in won't raise an exception,

@@ -97,7 +97,7 @@ class ShoppingSessionService(EntityBaseService):
     async def update_shopping_session(
             self,
             session: AsyncSession,
-            id: str | int,
+            id: UUID,
             dto: UpdatePartiallyShoppingSessionS
     ) -> ReturnShoppingSessionS:
         dto: dict = dto.model_dump(exclude_unset=True)

@@ -24,7 +24,7 @@
     "isbn":"33333",
     "name": "Book for teeeeest",
     "description": "book for teeest",
-    "price_per_unit": 12,
+    "price_per_unit": 150,
     "number_in_stock": 50,
     "rating": 3,
     "discount": 10
@@ -44,7 +44,7 @@
     "isbn":"00000000000000",
     "name": "Example book",
     "description": "example book",
-    "price_per_unit": 349,
+    "price_per_unit": 100,
     "number_in_stock": 250,
     "rating": 5,
     "discount": 0

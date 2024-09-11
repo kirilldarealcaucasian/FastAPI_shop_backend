@@ -49,7 +49,8 @@ async def order_service(
         shopping_session_repo=shopping_session_repo)
 
     user_service = UserService(
-        user_repo=user_repo
+        user_repo=user_repo,
+        order_repo=order_repo
     )
 
     cart_service = CartService(
@@ -164,6 +165,10 @@ async def test_perform_order(
 
     assert len(book_ids) == 1 and UUID("20aaefdc-ab3b-4074-af87-dc26a36bb6a0") in book_ids
 
+
+
+@pytest.mark.asyncio
+@pytest.fixture(scope="session")
 async def test_perform_order_with_failed_payment(
         order_service: OrderService,
         payment_service: PaymentService,

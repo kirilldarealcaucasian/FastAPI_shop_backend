@@ -24,8 +24,7 @@ class OrderRepositoryInterface(Protocol):
     async def get_all_orders(
             self,
             session: AsyncSession,
-            page: int,
-            limit: int,
+            pagination: Pagination
     ) -> list[Order]:
         ...
 
@@ -43,10 +42,10 @@ class OrderRepositoryInterface(Protocol):
     ) -> Order:
         ...
 
-    async def get_order_by_id(
+    async def get_by_id(
             self,
             session: AsyncSession,
-            order_id: int
+            id: int
     ) -> list[BookOrderAssoc]:
         ...
 
@@ -66,14 +65,20 @@ class OrderRepositoryInterface(Protocol):
 
     async def delete_book_from_order_by_id(
             self,
-            session:AsyncSession,
+            session: AsyncSession,
             book_id: UUID,
             order_id: int
     ):
         ...
 
 
-CombinedOrderRepositoryInterface = Union[OrderRepositoryInterface, OrmEntityRepoInterface]
+class CombinedOrderRepositoryInterface(
+    OrderRepositoryInterface,
+    OrmEntityRepoInterface,
+    Protocol
+):
+    ...
+
 
 OrderId: TypeAlias = str
 books_data: TypeAlias = str
@@ -117,6 +122,28 @@ class OrderRepository(OrmEntityRepository):
         except SQLAlchemyError as e:
             raise DBError(traceback=str(e))
 
+    async def get_order_by_payment_id(
+            self,
+            session: AsyncSession,
+            payment_id: UUID
+    ) -> Order:
+        stmt = select(Order).where(Order.payment_id == payment_id).options(
+            selectinload(Order.order_details).selectinload(BookOrderAssoc.book).selectinload(Book.categories),
+            selectinload(Order.order_details).selectinload(BookOrderAssoc.book).selectinload(Book.authors),
+        )
+
+        try:
+            order: Union[Order, None] = (await session.scalars(stmt)).one_or_none()
+        except SQLAlchemyError as e:
+            raise DBError(traceback=str(e))
+
+        if not order:
+            raise NotFoundError(
+                entity="Order"
+            )
+
+        return order
+
     async def get_by_id(
             self,
             session: AsyncSession,
@@ -140,23 +167,20 @@ class OrderRepository(OrmEntityRepository):
         except SQLAlchemyError as e:
             raise DBError(traceback=str(e))
 
-    async def delete_book_from_order_by_id(
+    async def get_order_summary(
             self,
             session: AsyncSession,
-            book_id: UUID,
-            order_id: int
-    ):
-        stmt = delete(BookOrderAssoc).where(
-            and_(
-                BookOrderAssoc.book_id == str(book_id),
-                BookOrderAssoc.order_id == order_id
-            )
-        )
+            payment_id: UUID
+    ) -> Order:
+        stmt = select(Order).filter_by(payment_id=payment_id)
         try:
-            await session.execute(stmt)
-            await session.commit()
+           order: Union[Order, None] = (await session.scalars(stmt)).one_or_none()
         except SQLAlchemyError as e:
             raise DBError(traceback=str(e))
+
+        if not order:
+            raise NotFoundError(entity="Order")
+        return order
 
     async def get_order_with_order_details(
             self,
@@ -180,44 +204,26 @@ class OrderRepository(OrmEntityRepository):
         except SQLAlchemyError as e:
             raise DBError(traceback=str(e))
 
-    async def get_order_by_payment_id(
+
+    async def delete_book_from_order_by_id(
             self,
             session: AsyncSession,
-            payment_id: UUID
-    ) -> Order:
-        stmt = select(Order).where(Order.payment_id == payment_id).options(
-            selectinload(Order.order_details).selectinload(BookOrderAssoc.book).selectinload(Book.categories),
-            selectinload(Order.order_details).selectinload(BookOrderAssoc.book).selectinload(Book.authors),
-        )
-
-        # stmt = select(Order).where(Order.payment_id == payment_id)
-
-        try:
-            order: Union[Order, None] = (await session.scalars(stmt)).one_or_none()
-        except SQLAlchemyError as e:
-            raise DBError(traceback=str(e))
-
-        if not order:
-            raise NotFoundError(
-                entity="Order"
+            book_id: UUID,
+            order_id: int
+    ):
+        stmt = delete(BookOrderAssoc).where(
+            and_(
+                BookOrderAssoc.book_id == str(book_id),
+                BookOrderAssoc.order_id == order_id
             )
-
-        return order
-
-    async def get_order_summary(
-            self,
-            session: AsyncSession,
-            payment_id: UUID
-    ) -> Order:
-        stmt = select(Order).filter_by(payment_id=payment_id)
+        )
         try:
-           order: Union[Order, None] = (await session.scalars(stmt)).one_or_none()
+            await session.execute(stmt)
+            await session.commit()
         except SQLAlchemyError as e:
             raise DBError(traceback=str(e))
 
-        if not order:
-            raise NotFoundError(entity="Order")
-        return order
+
 
 
 

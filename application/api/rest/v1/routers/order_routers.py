@@ -12,7 +12,7 @@ from application.services import OrderService
 from core.utils.cache import cachify
 from auth.services.permission_service import PermissionService
 
-router = APIRouter(prefix="/v1/orders", tags=["Orders CRUD"])
+router = APIRouter(prefix="/v1/orders", tags=["Orders"])
 
 
 @router.get(

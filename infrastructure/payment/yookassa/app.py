@@ -7,7 +7,6 @@ from yookassa import Payment, Configuration, Refund
 from uuid import uuid4, UUID
 
 from application.schemas import CreatePaymentS, ReturnPaymentS
-# from application.services.order_service.order_service import OrderService
 from core.config import settings
 
 __all__ = (
@@ -51,14 +50,8 @@ class PaymentProviderInterface(Protocol):
 class YooKassaPaymentProvider(InstanceMediatorSaver):
     """Interacts with external payment api"""
 
-    # def __init__(
-    #         self,
-    #         # order_service: Annotated[OrderService, Depends(OrderService)],
-    # ):
-
     Configuration.account_id = settings.YOOCASSA_ACCOUNT_ID
     Configuration.secret_key = settings.YOOCASSA_SECRET_KEY
-    # self._order_service = order_service
 
     def create_payment(
             self,
@@ -136,21 +129,12 @@ class YooKassaPaymentProvider(InstanceMediatorSaver):
 
         if payment_status == "succeeded":
             logger.info("Payment succeeded!")
-            # MEDIATOR PAYMENT SUCCEEDED EVENT
-            ################################
             await self.mediator.notify(
-                sender=self,
                 event=PaymentEvents.PAYMENT_SUCCEEDED.value,
                 payment_id=payment_id_to_uuid,
                 shopping_session_id=shopping_session_id,
                 status="success"
-            )
-            #################################
-            # return await self._order_service.perform_order(
-            #     payment_id=payment_id_to_uuid,
-            #     shopping_session_id=shopping_session_id,
-            #     status="success"
-            # )
+            )  # send event to the mediator so that it started order creation logic
 
         else:
             extra = {
@@ -160,17 +144,11 @@ class YooKassaPaymentProvider(InstanceMediatorSaver):
             logger.info("Payment failed (was canceled / timed out)!", extra=extra)
 
             await self.mediator.notify(
-                sender=self,
                 event=PaymentEvents.PAYMENT_FAILED.value,
                 payment_id=payment_id_to_uuid,
                 shopping_session_id=shopping_session_id,
                 status="failed"
-            )
-            # return await self._order_service.perform_order(
-            #     payment_id=payment_id_to_uuid,
-            #     shopping_session_id=shopping_session_id,
-            #     status="failed"
-            # )  # init a process of order creation
+            )  # send event to the mediator so that it aborted order creation process
 
     async def make_refund(
             self, payment_id: UUID,

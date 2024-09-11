@@ -13,6 +13,7 @@ from application.repositories.payment_detail_repo import CombinedPaymentDetailRe
 from application.repositories.shopping_session_repo import CombinedShoppingSessionRepositoryInterface
 from application.schemas.domain_model_schemas import OrderS, BookOrderAssocS, PaymentDetailS
 from application.services.order_service.utils import order_assembler
+from application.services.utils.filters import Pagination
 from core.base_repos import AbstractUnitOfWork, SqlAlchemyUnitOfWork
 from core.exceptions import (
     EntityDoesNotExist,
@@ -135,8 +136,10 @@ class OrderService(EntityBaseService, InstanceMediatorSaver):
     ) -> list[ShortenedReturnOrderS]:
         orders: list[Order] = await self._order_repo.get_all_orders(
             session=session,
-            page=pagination.page,
-            limit=pagination.limit,
+            pagination=Pagination(
+                limit=pagination.limit,
+                page=pagination.page,
+            )
         )
 
         res: list[ShortenedReturnOrderS] = []
@@ -503,8 +506,16 @@ class OrderService(EntityBaseService, InstanceMediatorSaver):
                         "Failed to change payment status to 'success' or create order or both",
                         extra=extra
                     )
+
+                    await self.mediator.notify(
+                        event=PaymentEvents.MAKE_REFUND.value,
+                        payment_id=payment_id,
+                        amount=order_create_obj.total_sum,
+                        description="Failed to perform service due to server error. Refund is coming soon",
+                    )  # send event to the mediator so that it performed refund logic
+
                     raise ServerError(
-                        detail="Server error. Failed to create order"
+                        detail="Server error. Failed to create order. Refund is coming soon"
                     )
 
                 order: Order = await self._order_repo.get_order_by_payment_id(
@@ -543,17 +554,15 @@ class OrderService(EntityBaseService, InstanceMediatorSaver):
                         "order_domain_models": order_domain_models
                     }
                     logger.error("failed to copy books from cart to order", exc_info=True, extra=extra)
-                    # MAKE REFUND EVENT
-                    #####################################
+
                     await self.mediator.notify(
-                        sender=self,
                         event=PaymentEvents.MAKE_REFUND.value,
                         payment_id=payment_id,
                         amount=order_domain_model.total_sum,
-                        description="TEST REFUNDING",
-                    )
-                    #####################################
-                    raise ServerError("Server error. Failed to create order")
+                        description="Failed to perform service due to server error. Refund is coming soon"
+                    )  # send event to the mediator so that it performed refund logic
+
+                    raise ServerError("Server error. Failed to create order. Refund is coming soon")
 
                 order_domain_model = OrderS(
                     order_status="success",
@@ -597,5 +606,5 @@ class OrderService(EntityBaseService, InstanceMediatorSaver):
                     repo=self._payment_detail_repo,
                     instance_id=payment_id,
                     domain_model=payment_domain_model
-                ) # update payment status to failed
+                )  # update payment status to failed
                 raise PaymentFailedError(detail="Payment was failed.")

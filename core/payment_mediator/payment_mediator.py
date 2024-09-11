@@ -13,6 +13,9 @@ from application.services.storage.internal_storage import internal_storage_servi
 
 
 class PaymentMediator:
+    """
+    This class helps to resolve circular dependency between OrderService and PaymentProvider.
+    """
     def __init__(
             self,
             order_service: OrderService,
@@ -25,18 +28,20 @@ class PaymentMediator:
         self._payment_provider.mediator = self
 
     async def notify(
-            self, sender: object,
-            event: str, *args, **kwargs
+            self, event: str,
+            *args, **kwargs
     ):
         if PaymentEvents.PAYMENT_SUCCEEDED.value == event or PaymentEvents.PAYMENT_FAILED:
             await self._order_service.perform_order(
                 *args, **kwargs
             )
+            return
 
         elif PaymentEvents.MAKE_REFUND.value == event:
             await self._payment_provider.make_refund(
                 *args, **kwargs
             )
+            return
 
 
 book_order_assoc_repo = BookOrderAssocRepository()

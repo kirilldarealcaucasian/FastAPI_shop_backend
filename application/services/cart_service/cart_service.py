@@ -4,11 +4,11 @@ from fastapi.security import HTTPAuthorizationCredentials
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.models import CartItem, Book
+from application.models import CartItem, Book, ShoppingSession
 from application.repositories.cart_repo import CombinedCartRepositoryInterface, CartRepository
 from application.repositories.book_repo import BookRepository, CombinedBookRepoInterface
 from application.schemas import AddBookToCartS, ReturnCartS, ShoppingSessionIdS, CreateShoppingSessionS, \
-    DeleteBookFromCartS
+    DeleteBookFromCartS, CartPrimaryIdentifier
 from core.base_repos.unit_of_work import AbstractUnitOfWork, SqlAlchemyUnitOfWork
 from application.services import UserService, ShoppingSessionService, BookService
 from application.services.cart_service import store_cart_to_cache, serialize_and_store_cart_books, cart_assembler
@@ -16,13 +16,13 @@ from application.services.cart_service import store_cart_to_cache, serialize_and
 from auth.helpers import get_token_payload
 from core import EntityBaseService
 from typing import Annotated, Union
-from application.schemas.domain_model_schemas import CartItemS, BookS
+from application.schemas.domain_model_schemas import CartItemS, BookS, ShoppingSessionS
 
 from uuid import UUID as uuid_UUID  # noqa
 
 from core.config import settings
 from core.exceptions import NotFoundError, EntityDoesNotExist, DBError, ServerError, AlreadyExistsError, \
-    AddBooksToCartError, BadRequest, DeleteBooksFromCartError, DecrementNumberInStockError
+    AddBooksToCartError, BadRequest, DeleteBooksFromCartError
 from infrastructure.redis import redis_client
 from logger import logger
 
@@ -175,98 +175,97 @@ class CartService(EntityBaseService):
             dto: AddBookToCartS,
     ) -> ReturnCartS:
         """Adds a book to the cart / increments the amount of books in a cart"""
-        domain_model = CartItemS(
-            **dto.model_dump(exclude_none=True),
-            session_id=shopping_session_id
-        )
-
         book: Book = await self.book_repo.get_by_id(
             session=session,
-            id=domain_model.book_id
+            id=dto.book_id
         )
 
-        if book.number_in_stock - domain_model.quantity < 0:
+        book_domain_model: BookS = BookS.model_validate(book, from_attributes=True)
+
+        if book_domain_model.number_in_stock - dto.quantity < 0:
             raise BadRequest(
                 detail=f"You're trying to order too many books, only {book.number_in_stock} left in stock"
             )
 
-        cart: list[CartItem] = await self.cart_repo.get_cart_by_session_id(
+        cart_item: Union[CartItem, None] = await self.cart_repo.get_by_id(
             session=session,
-            cart_session_id=shopping_session_id
+            id=CartPrimaryIdentifier(
+                book_id=dto.book_id,
+                session_id=shopping_session_id
+            )
+        )
+        cart_item_exists: bool = True if cart_item is not None else False
+
+        if not cart_item_exists:
+            # if there is no book in the cart yet
+            extra = {
+                "shopping_session_id": shopping_session_id,
+                "book_id": dto.book_id
+            }
+            logger.debug("cart_item wasn't found", extra=extra)
+
+            cart_item_domain_model: CartItemS = CartItemS(
+                    **dto.model_dump(exclude_none=True),
+                    session_id=shopping_session_id
+                    )
+
+            _ = await super().create(
+                session=session,
+                repo=self.cart_repo,
+                domain_model=cart_item_domain_model
+                )  # add book to the cart, if not added, http exception will be raised
+            logger.debug("cart_item was created", extra=extra)
+
+        if not cart_item_exists:
+            cart_item: CartItem = await super().get_by_id(
+                session=session,
+                repo=self.cart_repo,
+                id=CartPrimaryIdentifier(
+                    book_id=dto.book_id,
+                    session_id=shopping_session_id
+                )
+            )
+
+        cart_item_domain_model: CartItemS = CartItemS.model_validate(
+            cart_item,
+            from_attributes=True
         )
 
-        for cart_item in cart:
-            """check if book already in the cart, if it is, then 
-            decrease the number of books it stock and increase the number of books in the cart"""
-
-            if str(cart_item.book_id) == str(domain_model.book_id):
-                cart_item_domain_model: CartItemS = CartItemS.model_validate(
-                    cart_item,
-                    from_attributes=True
-                )
-
-                book_domain_model: BookS = BookS.model_validate(
-                    cart_item.book,
-                    from_attributes=True
-                )
-                book_domain_model.price_with_discount = None
-                #  computed field, we have to set it to None to avoid an error here
-
-                try:
-                    cart_item_domain_model.put_books_in_cart(
-                        quantity=domain_model.quantity,
-                        book=book_domain_model
-                    )
-                except AddBooksToCartError as e:
-                    logger.debug("Failed to add books from cart", exc_info=True)
-                    raise BadRequest(
-                        detail=e.info
-                    )
-
-                async with self._uow as uow:
-                    # update number_in_stock for the book
-                    # and increment the number of ordered books in a cart
-                    await uow.update(
-                        orm_model=CartItem,
-                        obj=cart_item_domain_model
-                    )
-                    await uow.update(
-                        orm_model=Book,
-                        obj=book_domain_model
-                    )
-                    await uow.commit()
-
-                session.expire_all()
-                cart: ReturnCartS = await self.get_cart_by_session_id(
-                    session=session,
-                    shopping_session_id=shopping_session_id
-                )
-                return cart
-
-        _ = await super().create(
-            session=session,
-            repo=self.cart_repo,
-            domain_model=domain_model
-        )  # add book to the cart
-
-        book_domain_model: BookS = BookS.model_validate(book, from_attributes=True)
+        shopping_session: ShoppingSession = cart_item.shopping_session
+        shopping_session_domain_model: ShoppingSessionS = ShoppingSessionS.model_validate(
+            shopping_session,
+            from_attributes=True
+        )
 
         try:
-            book_domain_model.decrement_number_in_stock(val=domain_model.quantity)
-        except DecrementNumberInStockError as e:
-            raise BadRequest(detail=e.info)
+            cart_item_domain_model.put_books_in_cart(
+                quantity=dto.quantity,
+                book=book_domain_model,
+                shopping_session=shopping_session_domain_model
+            )
+        except AddBooksToCartError as e:
+            raise BadRequest(str(e.info))
 
         async with self._uow as uow:
-            try:
+            # increment the number of ordered books in a cart
+            # update number_in_stock for the book
+            # update total in shopping_session
+            if cart_item_exists:
                 await uow.update(
-                    orm_model=Book,
-                    obj=book_domain_model
+                    orm_model=CartItem,
+                    obj=cart_item_domain_model
                 )
-                await uow.commit()
-            except DBError:
-                raise ServerError()
+            await uow.update(
+                orm_model=Book,
+                obj=book_domain_model
+            )
+            await uow.update(
+                orm_model=ShoppingSession,
+                obj=shopping_session_domain_model
+            )
+            await uow.commit()
 
-        session.expire_all()  # clear session cache to get fresh data
+        session.expire_all()
         updated_cart: ReturnCartS = await self.get_cart_by_session_id(
             session=session,
             shopping_session_id=shopping_session_id
@@ -274,7 +273,7 @@ class CartService(EntityBaseService):
 
         if self._redis_con is not None:
             for cart_book in updated_cart.books:
-                if str(cart_book.book_id) == str(domain_model.book_id):
+                if str(cart_book.book_id) == str(dto.book_id):
                     await serialize_and_store_cart_books(
                         book=cart_book,
                         redis_con=self._redis_con
@@ -284,105 +283,222 @@ class CartService(EntityBaseService):
 
             await self._redis_con.sadd(
                 cart_uq_key,
-                str(domain_model.book_id)
+                str(dto.book_id)
             )  # update set of books in cache
             logger.error("Failed to update cart in cache")
 
         return updated_cart
+
+    # async def delete_book_from_cart(
+    #         self,
+    #         session: AsyncSession,
+    #         deletion_data: DeleteBookFromCartS,
+    #         shopping_session_id: uuid_UUID
+    #
+    # ) -> ReturnCartS:
+    #
+    #     _ = await self._book_service.get_book_by_id(
+    #         session=session,
+    #         id=deletion_data.book_id
+    #     )  # if not exists, exception will be raised
+    #
+    #     cart: list[CartItem] = await self.cart_repo.get_cart_by_session_id(
+    #         session=session,
+    #         cart_session_id=shopping_session_id
+    #     )
+    #
+    #     shopping_session_domain_model: ShoppingSessionS = ShoppingSessionS.model_validate(
+    #         cart[0].shopping_session,
+    #         from_attributes=True
+    #     )
+    #
+    #     book_exists_in_cart: bool = False
+    #
+    #     for cart_item in cart:
+    #         book_domain_model: BookS = BookS.model_validate(
+    #             cart_item.book,
+    #             from_attributes=True
+    #         )
+    #         book_domain_model.price_with_discount = None
+    #         #  computed field, we have to set it to None to avoid an error here
+    #
+    #         if str(book_domain_model.id) == str(deletion_data.book_id):
+    #             book_exists_in_cart = True
+    #             # if we've found the book that we want to delete
+    #             cart_item_domain_model: CartItemS = CartItemS.model_validate(
+    #                 cart_item,
+    #                 from_attributes=True
+    #             )
+    #             try:
+    #                 cart_item_domain_model.remove_books_from_cart(
+    #                     quantity=deletion_data.quantity,
+    #                     book=book_domain_model,
+    #                     shopping_session=shopping_session_domain_model
+    #                 )  # update number of books in cart domain model
+    #             except DeleteBooksFromCartError as e:
+    #                 logger.debug("Failed to delete books from cart", exc_info=True)
+    #                 raise BadRequest(detail=e.info)
+    #
+    #             if cart_item_domain_model.quantity == 0:
+    #                 # if the whole quantity of books should be deleted
+    #                 try:
+    #                     async with self._uow as uow:
+    #                         await uow.update(
+    #                             obj=book_domain_model,
+    #                             orm_model=Book
+    #                         )
+    #                         cart_item_instance_to_delete = CartItem(
+    #                             session_id=cart_item_domain_model.session_id,
+    #                             book_id=book_domain_model.id,
+    #                         )
+    #                         await uow.delete(
+    #                             orm_obj=cart_item_instance_to_delete
+    #                         )
+    #                         await uow.update(
+    #                             orm_model=ShoppingSession,
+    #                             obj=shopping_session_domain_model
+    #                         )
+    #                         await uow.commit()
+    #                 except DBError:
+    #                     raise ServerError()
+    #                 logger.info("Book has been deleted from a cart")
+    #                 break
+    #
+    #             else:
+    #                 # if part of books should be deleted
+    #                 try:
+    #                     async with self._uow as uow:
+    #                         await uow.update(
+    #                             obj=book_domain_model,
+    #                             orm_model=Book
+    #                         )
+    #
+    #                         await uow.update(
+    #                             obj=cart_item_domain_model,
+    #                             orm_model=CartItem
+    #                         )
+    #                         await uow.commit()
+    #                 except DBError:
+    #                     raise ServerError()
+    #                 logger.info("Book has been updated in a cart")
+    #                 break
+    #
+    #     if not book_exists_in_cart:
+    #         raise EntityDoesNotExist(entity="Book (in a cart)")
+    #
+    #     session.expire_all()  # clear session cache to get fresh data
+    #     cart: ReturnCartS = await self.get_cart_by_session_id(
+    #         session=session,
+    #         shopping_session_id=shopping_session_id
+    #     )
+    #
+    #     if self._redis_con:
+    #         uq_book_name = f"book:{deletion_data.book_id}"
+    #         try:
+    #             await self._redis_con.srem(
+    #                 uq_book_name,
+    #                 str(deletion_data.book_id)
+    #             )  # delete book from cache
+    #         except RedisError:
+    #             extra = {
+    #                 "uq_book_name": uq_book_name,
+    #                 "books_id": deletion_data.book_id
+    #             }
+    #             logger.error(
+    #                 "Redis error. Something went wrong while deleting book from the cache",
+    #                 extra=extra,
+    #                 exc_info=True
+    #             )
+    #
+    #     return cart
 
     async def delete_book_from_cart(
             self,
             session: AsyncSession,
             deletion_data: DeleteBookFromCartS,
             shopping_session_id: uuid_UUID
-
     ) -> ReturnCartS:
-
-        _ = await self._book_service.get_book_by_id(
+        """Deletes a book from the cart / decrements the amount of books in a cart"""
+        book: Union[Book, None] = await self.book_repo.get_by_id(
             session=session,
             id=deletion_data.book_id
-        )  # if not exists, exception will be raised
-
-        cart: list[CartItem] = await self.cart_repo.get_cart_by_session_id(
-            session=session,
-            cart_session_id=shopping_session_id
         )
 
-        book_exists_in_cart: bool = False
-
-        for cart_item in cart:
-            book_domain_model: BookS = BookS.model_validate(
-                cart_item.book,
-                from_attributes=True
-            )
-            book_domain_model.price_with_discount = None
-            #  computed field, we have to set it to None to avoid an error here
-
-            if str(book_domain_model.id) == str(deletion_data.book_id):
-                book_exists_in_cart = True
-                # if we've found the book that we want to delete
-                cart_item_domain_model: CartItemS = CartItemS.model_validate(
-                    cart_item,
-                    from_attributes=True
-                )
-                try:
-                    cart_item_domain_model.remove_books_from_cart(
-                        quantity=deletion_data.quantity,
-                        book=book_domain_model
-                    )  # update number of books in cart domain model
-                except DeleteBooksFromCartError as e:
-                    logger.debug("Failed to delete books from cart", exc_info=True)
-                    raise BadRequest(detail=e.info)
-
-                if cart_item_domain_model.quantity == 0:
-                    # if the whole quantity of books should be deleted
-                    try:
-                        async with self._uow as uow:
-                            await uow.update(
-                                obj=book_domain_model,
-                                orm_model=Book
-                            )
-                            cart_item_instance_to_delete = CartItem(
-                                session_id=cart_item_domain_model.session_id,
-                                book_id=book_domain_model.id,
-                            )
-                            await uow.delete(
-                                orm_obj=cart_item_instance_to_delete
-                            )
-                            await uow.commit()
-                    except DBError:
-                        raise ServerError()
-                    logger.info("Book has been deleted from a cart")
-                    break
-
-                else:
-                    # if part of books should be deleted
-                    try:
-                        async with self._uow as uow:
-                            await uow.update(
-                                obj=book_domain_model,
-                                orm_model=Book
-                            )
-
-                            await uow.update(
-                                obj=cart_item_domain_model,
-                                orm_model=CartItem
-                            )
-                            await uow.commit()
-                    except DBError:
-                        raise ServerError()
-                    logger.info("Book has been updated in a cart")
-                    break
-
-        if not book_exists_in_cart:
+        if not book:
             raise EntityDoesNotExist(entity="Book (in a cart)")
 
-        session.expire_all()  # clear session cache to get fresh data
-        cart: ReturnCartS = await self.get_cart_by_session_id(
+        book_domain_model: BookS = BookS.model_validate(book, from_attributes=True)
+
+        cart_item: Union[CartItem, None] = await self.cart_repo.get_by_id(
+            session=session,
+            id=CartPrimaryIdentifier(
+                book_id=deletion_data.book_id,
+                session_id=shopping_session_id
+            )
+        )
+
+        if not cart_item:
+            raise EntityDoesNotExist(entity="Book (in cart)")
+
+        cart_item_domain_model: CartItemS = CartItemS.model_validate(
+            cart_item,
+            from_attributes=True
+        )
+
+        shopping_session: ShoppingSession = cart_item.shopping_session
+        shopping_session_domain_model: ShoppingSessionS = ShoppingSessionS.model_validate(
+            shopping_session,
+            from_attributes=True
+        )
+
+        try:
+            cart_item_domain_model.remove_books_from_cart(
+                quantity=deletion_data.quantity,
+                book=book_domain_model,
+                shopping_session=shopping_session_domain_model
+                )
+        except DeleteBooksFromCartError as e:
+            logger.debug("Failed to delete books from cart", exc_info=True)
+            raise BadRequest(detail=e.info)
+
+        try:
+            async with self._uow as uow:
+                # update number_in_stock for book
+                # delete book from the cart or update # noqa
+                # update total in shopping_session
+                await uow.update(
+                    obj=book_domain_model,
+                    orm_model=Book
+                )
+
+                if cart_item_domain_model.quantity == 0:
+                    cart_item_instance_to_delete = CartItem(
+                        session_id=cart_item_domain_model.session_id,
+                        book_id=book_domain_model.id,
+                    )
+                    await uow.delete(
+                        orm_obj=cart_item_instance_to_delete
+                    )
+                elif cart_item_domain_model.quantity >= 0:
+                    await uow.update(
+                        orm_model=CartItem,
+                        obj=cart_item_domain_model
+                    )
+
+                await uow.update(
+                    orm_model=ShoppingSession,
+                    obj=shopping_session_domain_model
+                )
+                await uow.commit()
+        except DBError:
+            logger.info("Book has been deleted from a cart")
+            raise ServerError()
+
+        session.expire_all()
+        updated_cart: ReturnCartS = await self.get_cart_by_session_id(
             session=session,
             shopping_session_id=shopping_session_id
         )
-
         if self._redis_con:
             uq_book_name = f"book:{deletion_data.book_id}"
             try:
@@ -400,5 +516,4 @@ class CartService(EntityBaseService):
                     extra=extra,
                     exc_info=True
                 )
-
-        return cart
+        return updated_cart
