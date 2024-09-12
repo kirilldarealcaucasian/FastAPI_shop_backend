@@ -10,3 +10,4 @@ TODO.txt
 /.ruff_cache/
 /.pytest_cache/
 /application/services/.ruff_cache/
+./check.py

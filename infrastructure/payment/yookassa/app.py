@@ -1,8 +1,8 @@
 import asyncio
 import json
-import uuid
-from typing import Protocol, TypeAlias
+from typing import Protocol, TypeAlias, Annotated
 
+from fastapi import Depends
 from yookassa import Payment, Configuration, Refund
 from uuid import uuid4, UUID
 
@@ -14,12 +14,11 @@ __all__ = (
     "YooKassaPaymentProvider"
 )
 
-from core.exceptions import PaymentObjectCreationError, PaymentRetrieveStatusError
-from core.payment_mediator.mediator_saver import InstanceMediatorSaver
-from core.payment_mediator.payment_events import PaymentEvents
+from core.exceptions import PaymentObjectCreationError, PaymentRetrieveStatusError, PaymentFailedError
 from logger import logger
+from application.services.order_service.order_service import OrderService
 
-PaymentID: TypeAlias = str
+PaymentID: TypeAlias = UUID
 
 
 class PaymentProviderInterface(Protocol):
@@ -30,13 +29,14 @@ class PaymentProviderInterface(Protocol):
     ) -> ReturnPaymentS:
         ...
 
-    def get_payment_status(self, payment_id: str) -> str:
+    def get_payment_status(self, payment_id: PaymentID) -> str:
         ...
 
     async def check_payment_status(
             self,
-            payment_id: str,
+            payment_id: UUID,
             shopping_session_id: UUID,
+            amount: float,
     ):
         ...
 
@@ -47,8 +47,14 @@ class PaymentProviderInterface(Protocol):
         ...
 
 
-class YooKassaPaymentProvider(InstanceMediatorSaver):
+class YooKassaPaymentProvider:
     """Interacts with external payment api"""
+
+    def __init__(
+            self,
+            order_service: Annotated[OrderService, Depends(OrderService)]
+    ):
+        self._order_service = order_service
 
     Configuration.account_id = settings.YOOCASSA_ACCOUNT_ID
     Configuration.secret_key = settings.YOOCASSA_SECRET_KEY
@@ -102,7 +108,7 @@ class YooKassaPaymentProvider(InstanceMediatorSaver):
 
     def get_payment_status(self, payment_id: PaymentID) -> str:
         try:
-            payment = json.loads(Payment.find_one(payment_id).json())
+            payment = json.loads(Payment.find_one(str(payment_id)).json())
             return payment["status"]
         except Exception:
             logger.error(
@@ -114,8 +120,9 @@ class YooKassaPaymentProvider(InstanceMediatorSaver):
 
     async def check_payment_status(
             self,
-            payment_id: str,
+            payment_id: UUID,
             shopping_session_id: UUID,
+            amount: float,
     ) -> None:
         """makes requests to the payment provider to get payment status"""
         payment_status = self.get_payment_status(payment_id=payment_id)
@@ -125,32 +132,42 @@ class YooKassaPaymentProvider(InstanceMediatorSaver):
             payment_status = self.get_payment_status(payment_id=payment_id)
             await asyncio.sleep(5)  # relinquish control to the event loop for 5 seconds
 
-        payment_id_to_uuid = uuid.UUID(payment_id)
+        extra = {
+            "payment_id": payment_id,
+            "shopping_session_id": shopping_session_id
+        }
 
         if payment_status == "succeeded":
-            logger.info("Payment succeeded!")
-            await self.mediator.notify(
-                event=PaymentEvents.PAYMENT_SUCCEEDED.value,
-                payment_id=payment_id_to_uuid,
-                shopping_session_id=shopping_session_id,
-                status="success"
-            )  # send event to the mediator so that it started order creation logic
+            logger.info("Response from payment provider: payment succeeded")
+            try:
+                await self._order_service.perform_order(
+                    payment_id=payment_id,
+                    shopping_session_id=shopping_session_id,
+                    status="success"
+                )
+            except PaymentFailedError as e:
+                logger.info("something went wrong, making refund . . .")
+                # make refund
+                self.make_refund(
+                    payment_id=payment_id,
+                    amount=amount,
+                    description=str(e)
+                )
+                logger.info("refund has been performed")
 
         else:
-            extra = {
-                "payment_id": payment_id,
-                "shopping_session_id": shopping_session_id
-            }
             logger.info("Payment failed (was canceled / timed out)!", extra=extra)
+            try:
+                await self._order_service.perform_order(
+                    payment_id=payment_id,
+                    shopping_session_id=shopping_session_id,
+                    status="failed"
+                )
+            except Exception as e:
+                logger.error("failed to process canceled payment")
 
-            await self.mediator.notify(
-                event=PaymentEvents.PAYMENT_FAILED.value,
-                payment_id=payment_id_to_uuid,
-                shopping_session_id=shopping_session_id,
-                status="failed"
-            )  # send event to the mediator so that it aborted order creation process
 
-    async def make_refund(
+    def make_refund(
             self, payment_id: UUID,
             amount: float, description: str
     ):
@@ -164,4 +181,4 @@ class YooKassaPaymentProvider(InstanceMediatorSaver):
                 },
             }
         )
-        print("REFUND RESULT: ", res.json())
+

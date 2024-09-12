@@ -1,5 +1,4 @@
 import asyncio
-import uuid
 from typing import Annotated
 from uuid import UUID
 
@@ -134,10 +133,8 @@ class PaymentService(EntityBaseService):
                 It's impossible to perform payment now. Try later"""
             )
 
-        payment_id: UUID = uuid.UUID(payment_creds.payment_id)
-
         domain_model = PaymentDetailS(
-            id=payment_id,
+            id=payment_creds.payment_id,
             status="pending",
             payment_provider="yookassa",
             amount=shopping_session.total
@@ -153,7 +150,9 @@ class PaymentService(EntityBaseService):
         _ = asyncio.create_task(
             self._payment_provider.check_payment_status(
                 shopping_session_id=shopping_session_id,
-                payment_id=payment_creds.payment_id)
+                payment_id=payment_creds.payment_id,
+                amount=shopping_session.total
+            )
         )  # schedule a task to the event loop so that it could execute in the "background"
 
         return payment_creds.confirmation_url

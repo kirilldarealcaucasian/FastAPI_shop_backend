@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from pydantic import BaseModel, Field, EmailStr
 
 from application.schemas import OrderItemS
@@ -14,7 +16,7 @@ class CreatePaymentS(BaseModel):
 
 class ReturnPaymentS(BaseModel):
     confirmation_url: str
-    payment_id: str
+    payment_id: UUID
 
 
 

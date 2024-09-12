@@ -82,7 +82,7 @@ async def order_service(
 @pytest.mark.asyncio
 @pytest.fixture(scope="session")
 async def payment_service(order_service: OrderService) -> PaymentService:
-    payment_provider = YooKassaPaymentProvider()
+    payment_provider = YooKassaPaymentProvider(order_service=order_service)
     shopping_session_repo = ShoppingSessionRepository()
     cart_repo = CartRepository()
     payment_detail_repo = PaymentDetailRepository()
@@ -104,6 +104,7 @@ async def session():
         yield session
 
 
+@pytest.mark.asyncio
 async def test_perform_order(
         order_service: OrderService,
         payment_service: PaymentService,
@@ -165,10 +166,7 @@ async def test_perform_order(
 
     assert len(book_ids) == 1 and UUID("20aaefdc-ab3b-4074-af87-dc26a36bb6a0") in book_ids
 
-
-
 @pytest.mark.asyncio
-@pytest.fixture(scope="session")
 async def test_perform_order_with_failed_payment(
         order_service: OrderService,
         payment_service: PaymentService,

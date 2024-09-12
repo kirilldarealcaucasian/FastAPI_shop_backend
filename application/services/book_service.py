@@ -16,7 +16,8 @@ from application.schemas import (
     UpdatePartiallyBookS, BookIdS,
 )
 
-from application.repositories import BookRepository, ImageRepository
+from application.repositories.book_repo import BookRepository
+from application.repositories.image_repo import  ImageRepository
 from application.services.storage import StorageServiceInterface, InternalStorageService
 from typing import Annotated
 from application.schemas.domain_model_schemas import BookS

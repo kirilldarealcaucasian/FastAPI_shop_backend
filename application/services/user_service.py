@@ -6,8 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from application import User
 from application.models import Order, BookOrderAssoc
-from application.repositories import OrderRepository
-from application.repositories.order_repo import CombinedOrderRepositoryInterface
+from application.repositories.order_repo import CombinedOrderRepositoryInterface, OrderRepository
 from application.repositories.user_repo import CombinedUserInterface
 from application.schemas.domain_model_schemas import UserS
 from application.repositories.user_repo import UserRepository
