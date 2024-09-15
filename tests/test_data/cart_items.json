@@ -3,5 +3,10 @@
     "session_id": "01e1ca73-5dea-46f2-a19b-56b5a7804efc",
     "book_id": "20aaefdc-ab3b-4074-af87-dc26a36bb6a0",
     "quantity": 1
+  },
+  {
+    "session_id": "fcc5b6ea-dd92-4b89-9ad6-1d9700b970bc",
+    "book_id": "20aaefdc-ab3b-4074-af87-dc26a36bb6a0",
+    "quantity": 1
   }
 ]

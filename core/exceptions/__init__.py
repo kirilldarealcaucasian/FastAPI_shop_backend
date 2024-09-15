@@ -22,6 +22,7 @@ __all__ = (
     "DecrementNumberInStockError",
     "BadRequest",
     "PaymentFailedError",
+    "RefundFailedError"
 )
 
 from core.exceptions.storage_exceptions import (
@@ -43,7 +44,8 @@ from core.exceptions.http_exceptions import (
 from core.exceptions.payment_exceptions import (
     PaymentObjectCreationError,
     PaymentRetrieveStatusError,
-    PaymentFailedError
+    PaymentFailedError,
+    RefundFailedError
 )
 
 from core.exceptions.domain_models_exceptions import (

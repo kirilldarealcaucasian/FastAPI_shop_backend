@@ -5,19 +5,17 @@ import shutil
 
 from PIL import Image
 from fastapi import HTTPException, status
-
-from core.exceptions import PaymentRetrieveStatusError, ServerError
 from core.image_conf import ImageConfig
 from email.message import EmailMessage
-from infrastructure.celery import celery
 from application.tasks.config.email_config import email_settings
 from application.tasks.helpers import email_generator, parse_logs_journal
 from pathlib import Path
+
+from infrastructure.celery.app import celery
 from logger import logger
 from infrastructure.mail import MailClient
 # from infrastructure.rabbitmq import rabbit_publisher
 from celery.utils.log import get_task_logger
-
 
 task_logger = get_task_logger(__name__)
 
@@ -90,26 +88,6 @@ def send_order_summary_email(
         port=email_settings.SMTP_PORT
     )
     mail_client.send_message(email)
-    # try:
-    #     with smtplib.SMTP_SSL(
-    #             email_settings.SMTP_HOST,
-    #             email_settings.SMTP_PORT
-    #     ) as server:
-    #         server.login(email_settings.SMTP_USER, email_settings.SMTP_PASS)
-    #         server.send_message(email)
-    # except socket.error:
-    #     extra = {
-    #         "SMTP_HOST": email_settings.SMTP_HOST,
-    #         "SMTP_PORT": email_settings.SMTP_PORT
-    #     }
-    #     logger.error(
-    #         "SMTP Exc: Error while connecting to SMTP server. Umable to send email", extra, exc_info=True
-    #     )
-    #     raise HTTPException(
-    #         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-    #         detail=f"Something went wrong while sending email"
-    #     )
-
 
 @celery.task
 def delete_all_images(concrete_image_folder: int):
@@ -137,5 +115,17 @@ def save_log():
     #     message=logs_bytes,
     #     routing_key="logs_q"
     # )
+
+
+@celery.task
+def remove_expired_carts():
+    """clears database from expired carts"""
+    from application.repositories.cart_repo import CartRepository
+    cart_repo = CartRepository()
+    loop = asyncio.get_event_loop()
+    return loop.run_until_complete(cart_repo.delete_expired_carts())
+
+
+
 
 

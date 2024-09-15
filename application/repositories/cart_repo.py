@@ -12,7 +12,9 @@ from core import OrmEntityRepository
 from core.base_repos import OrmEntityRepoInterface
 from typing import Protocol, Union, TypeAlias, Optional
 from core.exceptions import NotFoundError, DBError
+from infrastructure.postgres import db_client
 from logger import logger
+from datetime import datetime
 
 
 class CartRepositoryInterface(Protocol):
@@ -49,6 +51,11 @@ class CartRepositoryInterface(Protocol):
             self,
             session: AsyncSession,
             shopping_session_id: UUID
+    ) -> None:
+        ...
+
+    async def delete_expired_carts(
+            self,
     ) -> None:
         ...
 
@@ -106,7 +113,6 @@ class CartRepository(OrmEntityRepository):
             cart_item: Union[CartItem, None] = (await session.scalars(stmt)).one_or_none()
         except SQLAlchemyError as e:
             raise DBError(traceback=str(e))
-
 
         return cart_item
 
@@ -185,3 +191,27 @@ class CartRepository(OrmEntityRepository):
         )
 
         return res
+
+    async def delete_expired_carts(self) -> None:
+        async with db_client.async_session() as session:
+            now = datetime.now()
+            stmt = select(CartItem).join_from(
+                CartItem, ShoppingSession, CartItem.session_id == ShoppingSession.id
+            ).where(ShoppingSession.expiration_time <= now)
+
+            try:
+                cart_items = (await session.scalars(stmt)).all()
+            except SQLAlchemyError as e:
+                logger.error("failed to retrieve expired carts", exc_info=True)
+                raise DBError(traceback=str(e))
+            session_ids = []
+            for item in cart_items:
+                session_ids.append(item.session_id)
+
+            try:
+                delete_stmt = delete(ShoppingSession).where(ShoppingSession.id.in_(session_ids))
+            except SQLAlchemyError as e:
+                logger.error("failed to delete expired carts", exc_info=True)
+                raise DBError(traceback=str(e))
+            await session.execute(delete_stmt)
+            await session.commit()

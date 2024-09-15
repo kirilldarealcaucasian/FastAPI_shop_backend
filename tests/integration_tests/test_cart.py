@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.repositories import BookRepository, ImageRepository, CartRepository, ShoppingSessionRepository, \
     UserRepository, OrderRepository
+from application.repositories.cart_repo import CombinedCartRepositoryInterface
 from application.schemas import AddBookToCartS, ReturnCartS, ReturnBookS, DeleteBookFromCartS
 from application.schemas.order_schemas import AssocBookS
 from application.services import CartService, BookService, ShoppingSessionService, UserService
@@ -334,3 +335,20 @@ async def test_delete_book_that_not_in_cart(
         )
 
         assert "Book (in a cart) does not exist" in str(excinfo.value)
+
+
+@pytest.mark.asyncio(scope="session")
+async def test_delete_expired_carts(
+        cart_service: CartService,
+        session: AsyncSession,
+):
+    cart_repo: CombinedCartRepositoryInterface = cart_service._cart_repo
+
+    await cart_repo.delete_expired_carts()
+
+    with pytest.raises(EntityDoesNotExist) as excinfo:
+        await cart_service.get_cart_by_session_id(
+            session=session,
+            shopping_session_id=UUID("fcc5b6ea-dd92-4b89-9ad6-1d9700b970bc")
+        )
+    assert "Cart does not exist" in str(excinfo.value)

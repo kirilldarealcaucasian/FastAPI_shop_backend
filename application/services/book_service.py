@@ -17,7 +17,7 @@ from application.schemas import (
 )
 
 from application.repositories.book_repo import BookRepository
-from application.repositories.image_repo import  ImageRepository
+from application.repositories.image_repo import ImageRepository
 from application.services.storage import StorageServiceInterface, InternalStorageService
 from typing import Annotated
 from application.schemas.domain_model_schemas import BookS

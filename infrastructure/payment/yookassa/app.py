@@ -14,7 +14,8 @@ __all__ = (
     "YooKassaPaymentProvider"
 )
 
-from core.exceptions import PaymentObjectCreationError, PaymentRetrieveStatusError, PaymentFailedError
+from core.exceptions import PaymentObjectCreationError, PaymentRetrieveStatusError, PaymentFailedError, \
+    RefundFailedError
 from logger import logger
 from application.services.order_service.order_service import OrderService
 
@@ -166,19 +167,27 @@ class YooKassaPaymentProvider:
             except Exception as e:
                 logger.error("failed to process canceled payment")
 
-
     def make_refund(
             self, payment_id: UUID,
             amount: float, description: str
     ):
-        res = Refund.create(
-            {
+        try:
+            Refund.create(
+                {
+                    "payment_id": payment_id,
+                    "description": description,
+                    "amount": {
+                        "value": amount,
+                        "currency": "RUB"
+                    },
+                }
+            )
+        except Exception:
+            extra = {
                 "payment_id": payment_id,
-                "description": description,
-                "amount": {
-                    "value": amount,
-                    "currency": "RUB"
-                },
+                "amount": amount,
+                "description": description
             }
-        )
+            logger.error("failed to make refund", exc_info=True, extra=extra)
+            raise RefundFailedError(detail="Failed to make refund")
 
