@@ -3,8 +3,12 @@ from uuid import UUID
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.repositories import BookRepository, ImageRepository, CartRepository, ShoppingSessionRepository, \
-    UserRepository, OrderRepository
+from application.repositories.image_repo import ImageRepository
+from application.repositories.cart_repo import CartRepository
+from application.repositories.shopping_session_repo import ShoppingSessionRepository
+from application.repositories.user_repo import UserRepository
+from application.repositories.order_repo import OrderRepository
+from application.repositories.book_repo import BookRepository
 from application.repositories.cart_repo import CombinedCartRepositoryInterface
 from application.schemas import AddBookToCartS, ReturnCartS, ReturnBookS, DeleteBookFromCartS
 from application.schemas.order_schemas import AssocBookS
@@ -20,7 +24,6 @@ from application.services.storage.internal_storage.internal_storage_service impo
 @pytest.fixture(scope="session")
 async def cart_service(
 ) -> CartService:
-
     uow = SqlAlchemyUnitOfWork()
 
     book_repo = BookRepository()
@@ -57,6 +60,7 @@ async def cart_service(
     )
     return service
 
+
 @pytest.mark.asyncio
 @pytest.fixture(scope="session")
 async def shopping_session_service() -> ShoppingSessionService:
@@ -65,6 +69,7 @@ async def shopping_session_service() -> ShoppingSessionService:
         shopping_session_repo=shopping_session_repo
     )
     return service
+
 
 @pytest.mark.asyncio
 @pytest.fixture(scope="session")
@@ -85,8 +90,8 @@ async def test_add_book_to_cart_for_the_first_time(
         dto=AddBookToCartS(
             book_id=UUID("d2bafd10-4192-4930-aa40-9bcf4b39a848"),
             quantity=1
-            )
         )
+    )
 
     assert res == ReturnCartS(
         cart_id=UUID('01e1ca73-5dea-46f2-a19b-56b5a7804efc'),
@@ -100,7 +105,7 @@ async def test_add_book_to_cart_for_the_first_time(
                 discount=0,
                 count_ordered=1,
                 price_per_unit=100
-                ),
+            ),
             AssocBookS(
                 book_id=UUID('d2bafd10-4192-4930-aa40-9bcf4b39a848'),
                 book_title='Example book 2 ',
@@ -110,8 +115,8 @@ async def test_add_book_to_cart_for_the_first_time(
                 discount=0,
                 count_ordered=1,
                 price_per_unit=500.0,
-                )
-            ])
+            )
+        ])
 
     session.expire_all()
     book: ReturnBookS = await cart_service._book_service.get_book_by_id(
@@ -141,8 +146,8 @@ async def test_add_book_to_cart_for_the_second_time(
         dto=AddBookToCartS(
             book_id=UUID("d2bafd10-4192-4930-aa40-9bcf4b39a848"),
             quantity=1
-            )
         )
+    )
 
     assert res == ReturnCartS(
         cart_id=UUID('01e1ca73-5dea-46f2-a19b-56b5a7804efc'),

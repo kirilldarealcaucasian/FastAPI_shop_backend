@@ -1,6 +1,6 @@
 from email.message import EmailMessage
 
-from application.tasks.config.email_config import email_settings
+from application.tasks.email_config.email_config import email_settings
 
 
 def create_order_confirmation_template(
@@ -27,7 +27,6 @@ def create_order_confirmation_template(
             """
         )
         total_price += product_detail["total_price"]
-
 
     email.set_content(
         f"""

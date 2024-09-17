@@ -3,7 +3,7 @@ from application.schemas.base_schemas import ImageBaseS
 
 class ReturnImageS(ImageBaseS):
     id: int
-    book_isbn: str
+    book_id: str
     url: str
 
 

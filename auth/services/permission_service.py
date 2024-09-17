@@ -10,7 +10,7 @@ from application.schemas import ReturnShoppingSessionS
 from auth.helpers import get_token_payload
 from auth.repositories import AuthRepository
 from application.models import Order
-from application.repositories import OrderRepository
+from application.repositories.order_repo import OrderRepository
 from application.repositories.order_repo import CombinedOrderRepositoryInterface
 from application.services import OrderService, UserService, ShoppingSessionService, CartService
 from infrastructure.postgres import db_client

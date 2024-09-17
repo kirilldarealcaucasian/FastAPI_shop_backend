@@ -6,7 +6,7 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.models import ShoppingSession
-from application.repositories import ShoppingSessionRepository
+from application.repositories.shopping_session_repo import ShoppingSessionRepository
 from application.repositories.shopping_session_repo import CombinedShoppingSessionRepositoryInterface
 from application.schemas import ReturnShoppingSessionS, CreateShoppingSessionS, ShoppingSessionIdS, \
     UpdatePartiallyShoppingSessionS

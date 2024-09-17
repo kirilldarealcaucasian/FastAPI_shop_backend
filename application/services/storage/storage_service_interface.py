@@ -15,7 +15,6 @@ class StorageServiceInterface(Protocol):
         image: UploadFile,
     ): ...
 
-
     def delete_image(self, image_url: str, image_id: int, ) -> None:
         ...
 

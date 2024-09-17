@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, status, Cookie
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.services import PaymentService
-# from application.services.payment_service import ConfirmationURL
 from auth.services.permission_service import PermissionService
 from infrastructure.postgres import db_client
 

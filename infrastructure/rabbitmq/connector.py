@@ -2,12 +2,12 @@ import pika
 from pika.adapters.blocking_connection import BlockingChannel, BlockingConnection
 from pika.exceptions import AMQPError
 
-# from core.config import settings
+from core.config import settings
 from logger import logger
 from dataclasses import dataclass, field
 
 
-# __all__ = ("rabbit_connector",)
+__all__ = ("rabbit_connector", "RabbitConnector",)
 
 
 @dataclass
@@ -46,39 +46,49 @@ class RabbitConnector:
     def rabbit_chan(self, v: BlockingChannel):
         self._rabbit_chan = v
 
-    def create_connection(self) -> None:
+    def create_connection(self) -> bool:
         con_params = pika.ConnectionParameters(
             host=self.host,
             port=self.port,
             heartbeat=120,
-            connection_attempts=10,
+            connection_attempts=5,
             retry_delay=5,
             credentials=pika.PlainCredentials(self.user, self.password)
         )
         try:
             self.rabbit_con = pika.BlockingConnection(con_params)
-            logger.info("Connection has been created, CON: ", self.rabbit_con)
-        except BaseException:
-            raise logger.error(
+            logger.info(
+                "connection has been created, CON: ",
+                extra={"rabbit_con": self.rabbit_con}
+            )
+            return True
+        except Exception:
+            logger.error(
                 "unable to create RabbitMQ connection",
                 exc_info=True,
                 extra=self.creds
             )
+            return False
 
     def create_chan(self) -> None:
         # creates a channel using pre-created connection
         if self.rabbit_con is None:
-            raise ValueError("There is no connection created")
-
+            is_created: bool = self.create_connection()
+            if not is_created:
+                logger.error(
+                    "failed to create channel: connection hasn't been established",
+                )
+            return
         try:
             self.rabbit_chan: BlockingChannel = self.rabbit_con.channel()
-            logger.info("Channel has been created, CHAN: ", self.rabbit_chan)
-        except BaseException:
-            raise logger.error(
+            logger.info("Channel has been created, CHAN: ", extra={"channel": self.rabbit_chan})
+        except Exception:
+            logger.error(
                 "unable to create RabbitMQ channel",
                 exc_info=True,
                 extra=self.creds
             )
+            return
 
     def create_queue(
             self,
@@ -89,7 +99,8 @@ class RabbitConnector:
         # creates a queue using pre-created channel
         chan = self.rabbit_chan
         if self.rabbit_chan is None:
-            raise ValueError("There is no channel created")
+            logger.error("Can't create queue, rabbit channel hasn't been created")
+            return
         try:
             _ = chan.queue_declare(
                 queue=q_name,
@@ -123,23 +134,23 @@ class RabbitConnector:
             logger.error("Failed to close connection", extra=self.creds)
 
 
-# rabbit_connector = RabbitConnector(
-#     host=settings.Rabbit_HOST,
-#     user=settings.RABBIT_USER,
-#     password=settings.RABBIT_PASSWORD,
-#     port=settings.Rabbit_PORT
-# )
-#
-# rabbit_connector.create_connection()
-# rabbit_connector.create_chan()
-#
-# rabbit_connector.create_queue(
-#     q_name="logs_q",
-#     is_passive=False,
-#     is_durable=True,
-#     is_exclusive=False,
-#     is_auto_delete=False,
-# )
+rabbit_connector = RabbitConnector(
+    host=settings.RABBIT_HOST,
+    user=settings.RABBIT_USER,
+    password=settings.RABBIT_PASSWORD,
+    port=settings.RABBIT_PORT
+)
+if rabbit_connector.create_connection():
+    rabbit_connector.create_chan()
+
+    rabbit_connector.create_queue(
+        q_name="logs_q",
+        is_passive=False,
+        is_durable=True,
+        is_exclusive=False,
+        is_auto_delete=False,
+        )
+
 
 
 

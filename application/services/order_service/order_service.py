@@ -23,19 +23,17 @@ from core.exceptions import (
 from application.schemas import (
     ReturnOrderS,
     CreateOrderS,
-    BookSummaryS,
-    OrderSummaryS,
-    ReturnUserS,
     ShortenedReturnOrderS,
-    ReturnUserWithOrdersS,
     UpdatePartiallyOrderS, ReturnCartS, ReturnShoppingSessionS,
 )
 
-from application.repositories import (
+from application.repositories.order_repo import (
     OrderRepository,
-    BookRepository,
+)
+from application.repositories.shopping_session_repo import (
     ShoppingSessionRepository
 )
+from application.repositories.book_repo import BookRepository
 
 from application.schemas.filters import PaginationS
 from application.schemas.order_schemas import AssocBookS, AddBookToOrderS, OrderIdS
@@ -49,7 +47,6 @@ from core.entity_base_service import EntityBaseService
 from application.services import (
     BookService, UserService, CartService, ShoppingSessionService
 )
-from application.tasks.tasks1 import send_order_summary_email
 
 OrderId: TypeAlias = str
 books_data: TypeAlias = str
@@ -394,43 +391,6 @@ class OrderService(EntityBaseService):
                 extra=extra
             )
             raise ServerError()
-
-    async def make_order(
-            self,
-            session: AsyncSession,
-            order_id: int,
-    ):
-        user: ReturnUserS = await self._user_service.get_user_by_order_id(
-            session=session, order_id=order_id
-        )
-
-        user_with_orders: ReturnUserWithOrdersS = (
-            await self._user_service.get_user_with_orders(
-                session=session, user_id=user.id
-            )
-        )
-
-        order_books: list[BookSummaryS] = []
-
-        for order in user_with_orders.orders:
-            if order.order_id == order_id:
-                for book in order.books:
-                    total_price = book.count_ordered * book.price_per_unit
-                    book_summary = BookSummaryS(
-                        name=book.name,
-                        count_ordered=book.count_ordered,
-                        total_price=total_price,
-                    )
-                    order_books.append(book_summary)
-                break
-
-        data = OrderSummaryS(
-            username=user.name, email=user.email, books=order_books
-        ).model_dump()
-
-        send_order_summary_email.delay(
-            order_data=data,
-        )
 
     async def perform_order(
             self,

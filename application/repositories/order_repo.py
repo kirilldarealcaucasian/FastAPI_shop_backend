@@ -15,7 +15,6 @@ from typing import Protocol, Union, TypeAlias
 from core.exceptions import NotFoundError, DBError
 
 __all__ = (
-    "CombinedOrderRepositoryInterface",
     "OrderRepository",
 )
 

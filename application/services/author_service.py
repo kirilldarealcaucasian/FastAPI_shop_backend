@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from application.schemas.domain_model_schemas import AuthorS
 from core import EntityBaseService
 from core.base_repos import OrmEntityRepoInterface
-from application.repositories import AuthorRepository
+from application.repositories.author_repo import AuthorRepository
 from application.schemas import (
     CreateAuthorS,
     ReturnAuthorS,

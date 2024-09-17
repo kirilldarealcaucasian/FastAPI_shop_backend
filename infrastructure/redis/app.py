@@ -71,8 +71,7 @@ class RedisConnector:
 
 
 redis_client = RedisConnector(
-    host="127.0.0.1",
-    # host=settings.REDIS_HOST,
+    host=settings.REDIS_HOST,
     port=settings.REDIS_PORT
 )
 

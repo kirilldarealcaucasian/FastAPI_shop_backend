@@ -43,5 +43,5 @@ class PostgresClient:
 # client to access db
 db_client = PostgresClient(
     url=settings.get_db_url,
-    echo=False
+    echo=False  # display queries performed
 )

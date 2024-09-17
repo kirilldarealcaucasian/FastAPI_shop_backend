@@ -5,12 +5,13 @@ from fastapi import Depends, UploadFile
 from pydantic import ValidationError, PydanticSchemaGenerationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from application.models import Image
 from application.schemas.domain_model_schemas import ImageS
 from core import EntityBaseService
 from core.base_repos import OrmEntityRepoInterface
 from core.exceptions import RelatedEntityDoesNotExist, DomainModelConversionError, RemoteBucketDeletionError, \
     DeletionError, ServerError
-from application.repositories import ImageRepository
+from application.repositories.image_repo import ImageRepository
 from application.schemas import ReturnImageS, CreateImageS, ReturnBookS
 from application.services.book_service import BookService
 from application.services.storage import InternalStorageService, StorageServiceInterface
@@ -32,11 +33,23 @@ class ImageService(EntityBaseService):
         self._storage_service = storage_service
 
     async def get_all_images(
-        self, session: AsyncSession, book_id: str | int
+        self, session: AsyncSession, book_id: UUID | int
     ) -> list[ReturnImageS]:
-        return await super().get_all(
-            session=session, repo=self._image_repo, book_id=book_id
+        images: list[Image] = await super().get_all(
+            session=session,
+            repo=self._image_repo,
+            book_id=book_id
         )
+        res: list[ReturnImageS] = []
+        for image in images:
+            res.append(
+                ReturnImageS(
+                    id=image.id,
+                    book_id=str(image.book_id),
+                    url=image.url
+                )
+            )
+        return res
 
     async def upload_image(
         self,
@@ -55,7 +68,12 @@ class ImageService(EntityBaseService):
         image_data: CreateImageS = await self._storage_service.upload_image(
             image=image, instance_id=book_id
         )
-        image_data: dict = image_data.model_dump(exclude_unset=True)
+        if not image_data.book_id or not image_data.url:
+            raise ServerError(
+                detail="Unable to upload the file now due to server error. Try again later"
+            )
+
+        image_data: dict = image_data.model_dump()
 
         try:
             domain_model = ImageS(**image_data)
@@ -65,7 +83,7 @@ class ImageService(EntityBaseService):
                 extra={"image_data": image_data},
                 exc_info=True
                 )
-            raise DomainModelConversionError
+            raise DomainModelConversionError()
 
         if image_data:
             await super().create(

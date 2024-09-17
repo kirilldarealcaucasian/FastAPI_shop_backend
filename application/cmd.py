@@ -6,6 +6,7 @@ from aioredis import Redis
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import HTTPException
 from auth.routers import auth_router
 from application.api.rest.v1 import (
     image_router,
@@ -44,9 +45,17 @@ for router in (
 
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
-    """"""
     start_time = time.time()
-    response = await call_next(request)
+    response = None
+    try:
+        response = await call_next(request)
+    except Exception as e:
+        if not isinstance(e, HTTPException):
+            logger.error(msg="something went wrong", exc_info=True)
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"error": "Something went wrong"},
+            )
     process_time = time.time() - start_time
     logger.info("Request execution time: ", extra={
         "request_process_time": round(process_time, 3)
@@ -54,7 +63,7 @@ async def add_process_time_header(request: Request, call_next):
     response.headers["X-Process-Time"] = str(process_time)
     return response
 
-if settings.MODE != "DEV":
+if settings.MODE != "TEST":
     @app.middleware("http")
     async def throttle_requests(request: Request, call_next):
         """aborts requests if request_counter >= threshold within time interval"""

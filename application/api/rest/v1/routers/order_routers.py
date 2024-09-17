@@ -1,7 +1,7 @@
 from datetime import timedelta
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status, Cookie
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from infrastructure.postgres import db_client
@@ -30,7 +30,7 @@ async def get_all_orders(
 @router.get("/{order_id}",
             status_code=status.HTTP_200_OK,
             response_model=ReturnOrderS,
-            # dependencies=[Depends(PermissionService().get_order_permission)]
+            dependencies=[Depends(PermissionService().get_order_permission)]
             )
 @cachify(
     ReturnOrderS,
@@ -82,7 +82,7 @@ async def delete_order(
 
 @router.post(
     '/items',
-    # dependencies=[Depends(PermissionService().get_order_permission)],
+    dependencies=[Depends(PermissionService().get_order_permission)],
     status_code=status.HTTP_200_OK,
 )
 async def add_book_to_order(
@@ -118,7 +118,7 @@ async def delete_book_from_order(
 
 @router.patch(
     "/{order_id}",
-    # dependencies=[Depends(PermissionService().get_order_permission)]
+    dependencies=[Depends(PermissionService().get_order_permission)]
 )
 async def update_order(
         order_id: int,
@@ -132,15 +132,5 @@ async def update_order(
         dto=update_data
     )
 
-
-# @router.get("/{order_id}/summary",
-#             status_code=status.HTTP_200_OK,
-#             dependencies=[Depends(PermissionService().get_order_permission)])
-# async def make_order(
-#         order_id: int,
-#         service: OrderService = Depends(),
-#         session: AsyncSession = Depends(db_client.get_scoped_session_dependency)
-# ):
-#     return await service.make_order(session=session, order_id=order_id)
 
 

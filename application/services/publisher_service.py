@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from application.schemas.domain_model_schemas import PublisherS
 from core import EntityBaseService
 from core.base_repos import OrmEntityRepoInterface
-from application.repositories import PublisherRepository
+from application.repositories.publisher_repo import PublisherRepository
 from application.schemas import CreatePublisherS, ReturnPublisherS, PublisherId
 from core.exceptions import DomainModelConversionError
 from logger import logger

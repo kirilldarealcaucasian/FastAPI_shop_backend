@@ -7,15 +7,16 @@ from PIL import Image
 from fastapi import HTTPException, status
 from core.image_conf import ImageConfig
 from email.message import EmailMessage
-from application.tasks.config.email_config import email_settings
-from application.tasks.helpers import email_generator, parse_logs_journal
+from application.tasks.email_config.email_config import email_settings
+from application.tasks.task_helpers import email_generator, parse_logs_journal
 from pathlib import Path
 
 from infrastructure.celery.app import celery
 from logger import logger
 from infrastructure.mail import MailClient
-# from infrastructure.rabbitmq import rabbit_publisher
+from infrastructure.rabbitmq import rabbit_publisher
 from celery.utils.log import get_task_logger
+from application.repositories.cart_repo import CartRepository
 
 task_logger = get_task_logger(__name__)
 
@@ -26,6 +27,7 @@ def create_image_folder(concrete_image_folder_name: str) -> str:
         ImageConfig.images_folder,
         concrete_image_folder_name
     )
+    print("IMAGE_FOLDER_PATH: ", image_folder_path)
     try:
         if not Path(image_folder_path).is_dir():
             os.makedirs(image_folder_path, exist_ok=True)
@@ -55,7 +57,7 @@ def fix_and_save_image(image_io: io.BytesIO, full_image_path: str):
 
             fixed_image.save(full_image_path)
 
-    except (IOError, OSError) as e:
+    except (IOError, OSError, Exception) as e:
         extra = {"full_image_path": full_image_path}
         logger.error("Os Error: Error while opening or saving image", extra, exc_info=True)
         raise HTTPException(
@@ -89,6 +91,7 @@ def send_order_summary_email(
     )
     mail_client.send_message(email)
 
+
 @celery.task
 def delete_all_images(concrete_image_folder: int):
     try:
@@ -110,22 +113,20 @@ def delete_all_images(concrete_image_folder: int):
 
 @celery.task
 def save_log():
+    """parses logs file, encodes data and sends to the queue"""
     logs_bytes: bytes = parse_logs_journal() # noqa
-    # # rabbit_publisher.send_message_basic_publish(
-    #     message=logs_bytes,
-    #     routing_key="logs_q"
-    # )
+    if logs_bytes == b'':
+        logger.info("no logs to save")
+        return
+    rabbit_publisher.send_message_basic_publish(
+            message=logs_bytes,
+            routing_key="logs_q"
+        )
 
 
 @celery.task
 def remove_expired_carts():
     """clears database from expired carts"""
-    from application.repositories.cart_repo import CartRepository
     cart_repo = CartRepository()
     loop = asyncio.get_event_loop()
     return loop.run_until_complete(cart_repo.delete_expired_carts())
-
-
-
-
-

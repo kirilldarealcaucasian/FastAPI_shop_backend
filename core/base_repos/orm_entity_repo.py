@@ -11,15 +11,9 @@ from sqlalchemy.exc import NoSuchTableError, NoReferenceError
 from typing import TypeVar, TypeAlias, Optional, Union
 from application.schemas.domain_model_schemas import \
     (
-    AuthorS,
-    BookS,
-    BookOrderAssocS,
-    CartItemS,
-    CategoryS,
-    OrderS,
-    PaymentDetailS,
-    PublisherS,
-    ShoppingSessionS
+    AuthorS, BookS, BookOrderAssocS,
+    CartItemS, CategoryS, OrderS,
+    PaymentDetailS, PublisherS, ShoppingSessionS
 )
 
 DomainModelDataT = TypeVar(

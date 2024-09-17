@@ -6,6 +6,7 @@ import asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import insert
 
+from core.config import settings
 from infrastructure.postgres import db_client
 from application.models import Base, User, Book, BookOrderAssoc, Author, Publisher, Order, Image, Category, \
     BookCategoryAssoc, CartItem, ShoppingSession
@@ -14,10 +15,9 @@ from datetime import datetime
 import os
 
 
-
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def prepare_database():
-    # assert settings.MODE == "TEST"
+    assert settings.MODE == "TEST"
 
     async with db_client.engine.begin() as con:
         await con.run_sync(Base.metadata.drop_all)

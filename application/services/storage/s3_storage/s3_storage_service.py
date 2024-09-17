@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.exceptions import RemoteBucketDeletionError
 from logger import logger
 from application.services.storage.internal_storage.image_manager import ImageManager, ImageData
-from application.repositories import ImageRepository
+from application.repositories.image_repo import ImageRepository
 from application.repositories.book_repo import BookRepository, CombinedBookRepoInterface
 
 from application.schemas import CreateImageS, ReturnImageS

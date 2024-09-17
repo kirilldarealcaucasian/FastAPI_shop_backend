@@ -2,20 +2,19 @@ import os
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import UploadFile, Depends, HTTPException, status
+from fastapi import UploadFile, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.entity_base_service import EntityBaseService
-from application.repositories import BookRepository
+from application.repositories.book_repo import BookRepository
 from application.services.storage.internal_storage.image_manager import (
     ImageManager,
     ImageData,
 )
 from application.schemas import CreateImageS
-from core.exceptions import EntityDoesNotExist, DeletionError
+from core.exceptions import EntityDoesNotExist, DeletionError, ServerError
 
 from logger import logger
-from celery.exceptions import TaskError
 
 
 class InternalStorageService(EntityBaseService):
@@ -27,19 +26,19 @@ class InternalStorageService(EntityBaseService):
             book_repo: Annotated[BookRepository, Depends(BookRepository)],
             image_manager: Annotated[ImageManager, Depends(ImageManager)],
     ):
-        self._book_repo: BookRepository = book_repo
         super().__init__(book_repo=book_repo)
+        self._book_repo: BookRepository = book_repo
         self._image_manager: ImageManager = image_manager
 
     async def upload_image(
             self,
-            instance_id: str | int | UUID,
+            instance_id: UUID,
             image: UploadFile,
     ) -> CreateImageS:
         """Stores image in the project folder"""
         from application.tasks.tasks1 import upload_image
         res: ImageData = await self._image_manager(
-            image=image, image_folder_name=instance_id
+            image=image, image_folder_name=str(instance_id)
         )
 
         image_url = res.get("image_url", None)
@@ -54,23 +53,20 @@ class InternalStorageService(EntityBaseService):
             image_bytes: bytes = await image.read()
             upload_image.delay(
                 image_bytes=image_bytes,
-                image_folder_name=instance_id,
+                image_folder_name=str(instance_id),
                 image_name=image_name,
             )
-        except TaskError:
+        except Exception:
             extra = {"instance_id": instance_id}
             logger.error(
-                "Celery error: error while trying to upload the image",
+                "celery error: error while trying to upload the image",
                 extra,
                 exc_info=True,
             )
-
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Unable to upload the file",
+            raise ServerError(
+                detail="Unable to upload the file now due to server error. Try again later",
             )
-
-        return CreateImageS(book_id=instance_id, url=image_url)
+        return CreateImageS(book_id=str(instance_id), url=image_url)
 
     def delete_image(self, image_url: str, image_id: int) -> None:
         """deletes image from the project folder"""

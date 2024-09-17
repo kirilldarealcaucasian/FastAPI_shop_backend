@@ -27,7 +27,7 @@ class ImageManager:
             image_size < 4000000,
         ]
         await image.seek(0)  # change the stream position to the start
-        # (because we might want to read teh file again)
+        # (because we might want to read the file again)
         if not validators[0]:
             raise HTTPException(
                 status_code=status.HTTP_406_NOT_ACCEPTABLE,
@@ -75,7 +75,7 @@ class ImageManager:
         fmt = image.content_type.split("/")[1]
 
         try:
-            if await self.image_validate(image=image, image_format=format):
+            if await self.image_validate(image=image, image_format=fmt):
                 return self.construct_image_url(
                     format=fmt, image_folder_name=image_folder_name
                 )

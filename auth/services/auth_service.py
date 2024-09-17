@@ -13,7 +13,7 @@ from core.exceptions import DuplicateError, AlreadyExistsError, UnauthorizedErro
 class AuthService:
 
     def __init__(self, repository: AuthRepository = Depends(AuthRepository)):
-        self.repository = repository
+        self._auth_repo = repository
 
     async def register_user(self, session: AsyncSession, data: RegisterUserS):
         payload_copy: dict = data.model_copy().model_dump()
@@ -24,7 +24,7 @@ class AuthService:
         payload_copy["hashed_password"] = hashed_password
 
         try:
-            user: ReturnUserS = await self.repository.create_user(
+            user: ReturnUserS = await self._auth_repo.create_user(
                 session=session,
                 data=payload_copy
             )
@@ -41,7 +41,7 @@ class AuthService:
         email = user_creds.email
 
         try:
-            user = await self.repository.retrieve_user_by_email(
+            user = await self._auth_repo.retrieve_user_by_email(
                 session=session,
                 email=email,
                 is_login=True
@@ -81,7 +81,7 @@ class AuthService:
         payload: dict = get_token_payload(credentials=credentials)
         email: str = validate_token(payload)
 
-        user: User = await self.repository.retrieve_user_by_email(
+        user: User = await self._auth_repo.retrieve_user_by_email(
             session=session,
             email=email, is_login=True
         )

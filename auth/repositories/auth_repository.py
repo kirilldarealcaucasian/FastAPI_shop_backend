@@ -15,11 +15,12 @@ TokenDataT = TypeVar("TokenDataT")
 class AuthRepository:
     model = User
 
-    async def retrieve_user_by_email(self,
-                                     session: AsyncSession,
-                                     email: str,
-                                     is_login: bool = False
-                                     ) -> User:
+    async def retrieve_user_by_email(
+            self,
+            session: AsyncSession,
+            email: str,
+            is_login: bool = False
+    ) -> User:
         stmt = select(self.model).filter_by(email=email)
         try:
             res = await session.execute(stmt)

@@ -4,8 +4,13 @@ from uuid import UUID
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.repositories import BookRepository, ImageRepository, CartRepository, ShoppingSessionRepository, \
-    UserRepository, OrderRepository, PaymentDetailRepository
+from application.repositories.book_repo import BookRepository
+from application.repositories.image_repo import ImageRepository
+from application.repositories.cart_repo import CartRepository
+from application.repositories.shopping_session_repo import ShoppingSessionRepository
+from application.repositories.user_repo import UserRepository
+from application.repositories.order_repo import OrderRepository
+from application.repositories.payment_detail_repo import PaymentDetailRepository
 from application.repositories.book_order_assoc_repo import BookOrderAssocRepository
 from application.schemas import ReturnOrderS
 from application.schemas.domain_model_schemas import PaymentDetailS, OrderS
@@ -61,7 +66,6 @@ async def order_service(
         book_service=book_service,
         uow=uow
     )
-
 
     service = OrderService(
         order_repo=order_repo,
@@ -165,6 +169,7 @@ async def test_perform_order(
         book_ids.append(book.book_id)
 
     assert len(book_ids) == 1 and UUID("20aaefdc-ab3b-4074-af87-dc26a36bb6a0") in book_ids
+
 
 @pytest.mark.asyncio
 async def test_perform_order_with_failed_payment(

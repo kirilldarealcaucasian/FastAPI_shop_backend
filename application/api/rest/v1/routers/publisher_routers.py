@@ -8,8 +8,6 @@ from infrastructure.postgres import db_client
 from core.utils.cache import cachify
 from application.schemas import (
     CreatePublisherS,
-    # UpdatePublisherS,
-    # UpdatePartiallyPublisherS,
     ReturnPublisherS
 )
 from application.services import PublisherService
@@ -58,31 +56,3 @@ async def delete_publisher(
         session: AsyncSession = Depends(db_client.get_scoped_session_dependency)
 ):
     return await service.delete_publisher(session=session, publisher_id=publisher_id)
-
-
-# @router.put('/{publisher_id}', status_code=status.HTTP_200_OK)
-# async def update_publisher(
-#         publisher_id: int,
-#         update_data: UpdatePublisherS,
-#         service: PublisherService = Depends(),
-#         session: AsyncSession = Depends(db_config.get_scoped_session_dependency)
-# ):
-#     return await service.update(
-#         session=session,
-#         instance_id=publisher_id,
-#         dto=update_data
-#     )
-#
-#
-# @router.patch('/{publisher_id}', status_code=status.HTTP_200_OK)
-# async def update_publisher_partially(
-#         publisher_id: int,
-#         update_data: UpdatePartiallyPublisherS,
-#         service: PublisherService = Depends(),
-#         session: AsyncSession = Depends(db_config.get_scoped_session_dependency)
-# ):
-#     return await service.update(
-#         session=session,
-#         instance_id=publisher_id,
-#         dto=update_data
-#     )
