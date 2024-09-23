@@ -417,7 +417,6 @@ class OrderService(EntityBaseService):
             # update number_in_stock for the book
             # update total in order
             if order_item_exists:
-                print("order_item_domain_model: ", order_item_domain_model)
                 await uow.update(
                     orm_model=BookOrderAssoc,
                     obj=order_item_domain_model
@@ -427,7 +426,7 @@ class OrderService(EntityBaseService):
                 orm_model=Book,
                 obj=book_domain_model
             )
-            print("order_domain_model: ", order_domain_model)
+
             await uow.update(
                 orm_model=Order,
                 obj=order_domain_model

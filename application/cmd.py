@@ -59,7 +59,7 @@ async def add_process_time_header(request: Request, call_next):
     response.headers["X-Process-Time"] = str(process_time)
     return response
 
-if settings.MODE != "LOCAL":
+if settings.MODE != "TEST":
     @app.middleware("http")
     async def throttle_requests(request: Request, call_next):
         """aborts requests if request_counter >= threshold within time interval"""
