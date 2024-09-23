@@ -2,4 +2,4 @@ __all__ = (
     "logger",
 )
 
-from logger.logg import logger
+from .logg import logger

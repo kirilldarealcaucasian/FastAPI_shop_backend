@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 
 class OrderS(BaseModel):
+    id: int | None = None
     user_id: int | None = None
     order_status: str | None = None
     order_date: datetime | None = None

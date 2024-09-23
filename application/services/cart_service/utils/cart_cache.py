@@ -5,7 +5,7 @@ from uuid import UUID
 from aioredis import Redis
 from application.schemas import ReturnCartS
 from application.schemas.order_schemas import AssocBookS
-from application.services.cart_service import serialize_and_store_cart_books
+from .cart_converter import serialize_and_store_cart_books
 
 from core.exceptions import NoCookieError
 from infrastructure.redis import redis_client

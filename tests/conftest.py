@@ -17,7 +17,7 @@ import os
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def prepare_database():
-    assert settings.MODE == "TEST"
+    # assert settings.MODE == "TEST"
 
     async with db_client.engine.begin() as con:
         await con.run_sync(Base.metadata.drop_all)

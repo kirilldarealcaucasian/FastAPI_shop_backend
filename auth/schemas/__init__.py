@@ -4,4 +4,4 @@ __all__ = (
     "Token"
 )
 
-from auth.schemas.token_schema import  TokenPayload,  AuthResponse, Token
+from .token_schema import  TokenPayload,  AuthResponse, Token

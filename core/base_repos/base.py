@@ -7,7 +7,7 @@ __all__ = (
     "OrmEntityRepoInterface"
 )
 
-DomainModelDataT = TypeVar("DomainModelDataT",)
+DomainModelDataT = TypeVar("DomainModelDataT", )
 
 
 class OrmEntityRepoInterface(Protocol):
@@ -28,7 +28,6 @@ class OrmEntityRepoInterface(Protocol):
     ):
         ...
 
-
     async def update(
             self,
             domain_model: DomainModelDataT,
@@ -46,7 +45,3 @@ class OrmEntityRepoInterface(Protocol):
 
     async def commit(self, session: AsyncSession):
         ...
-
-
-
-

@@ -1,6 +1,6 @@
 from fastapi import Depends
 from pydantic import UUID4
-from application import Book
+from application.models import Book
 from application.services.utils.filters.base_filter import BaseFilter
 from application.services.utils.filters.categories_filter import CategoryFilter
 

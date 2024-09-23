@@ -18,6 +18,8 @@ __all__ = (
     "PaymentRetrieveStatusError",
     "RemoteBucketDeletionError",
     "DeleteBooksFromCartError",
+    "DeleteBooksFromOrderError",
+    "AddBookToOrderError",
     "AddBooksToCartError",
     "DecrementNumberInStockError",
     "BadRequest",
@@ -25,12 +27,12 @@ __all__ = (
     "RefundFailedError"
 )
 
-from core.exceptions.storage_exceptions import (
+from .storage_exceptions import (
     DuplicateError, DBError,
     NotFoundError, DeletionError,
     RemoteBucketDeletionError
 )
-from core.exceptions.http_exceptions import (
+from .http_exceptions import (
     AlreadyExistsError, InvalidModelCredentials,
     EntityDoesNotExist, ServerError,
     UnauthorizedError, RepositoryResolutionError,
@@ -41,15 +43,17 @@ from core.exceptions.http_exceptions import (
     BadRequest
 )
 
-from core.exceptions.payment_exceptions import (
+from .payment_exceptions import (
     PaymentObjectCreationError,
     PaymentRetrieveStatusError,
     PaymentFailedError,
     RefundFailedError
 )
 
-from core.exceptions.domain_models_exceptions import (
+from .domain_models_exceptions import (
     DeleteBooksFromCartError,
+    DeleteBooksFromOrderError,
     AddBooksToCartError,
-    DecrementNumberInStockError
+    DecrementNumberInStockError,
+    AddBookToOrderError
 )

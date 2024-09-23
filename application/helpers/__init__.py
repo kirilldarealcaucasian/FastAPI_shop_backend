@@ -5,6 +5,6 @@ __all__ = (
     "get_image_format",
 )
 
-from application.helpers.image_helpers import construct_url, get_image_format
-from application.helpers.custom_security import CustomSecurity
-from application.helpers.uuid_helpers import generate_uuid
+from .image_helpers import construct_url, get_image_format
+from .custom_security import CustomSecurity
+from .uuid_helpers import generate_uuid

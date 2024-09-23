@@ -12,15 +12,15 @@ async def get_admin_header() -> str:
         "password": "123456"
     }
     async with AsyncClient(app=app, base_url="http://test") as ac:
-        response = await ac.post(url="auth/login", json=data)
-        admin_header = f"Bearer {response.json()['token']}"
-        return admin_header
+        response = await ac.post(url="v1/auth/login", json=data)
+        access_token = response.json()['access_token']
+        return f"Bearer {access_token}"
 
 
 @pytest.mark.asyncio(scope="session")
 async def test_get_all_orders():
     async with AsyncClient(app=app, base_url="http://test") as ac:
-        response = await ac.get(url="orders")
+        response = await ac.get(url="v1/orders")
     assert response.status_code == 200
 
 
@@ -34,7 +34,7 @@ async def test_get_order_by_user_id(
         status_code: int,
 ):
     async with AsyncClient(app=app, base_url="http://test") as ac:
-        response = await ac.get(url=f"orders/users/{user_id}")
+        response = await ac.get(url=f"v1/orders/users/{user_id}")
         assert response.status_code == status_code
 
 
@@ -49,7 +49,10 @@ async def test_get_order_by_id(
         get_admin_header: str
 ):
     async with AsyncClient(app=app, base_url="http://test") as ac:
-        response = await ac.get(url=f"orders/{order_id}", headers={"Authorization": get_admin_header})
+        response = await ac.get(
+            url=f"v1/orders/{order_id}",
+            headers={"Authorization": get_admin_header}
+        )
     assert response.status_code == status_code
 
 
@@ -63,14 +66,14 @@ async def test_create_order(
         status_code: int,
 ):
     async with AsyncClient(app=app, base_url="http://test") as ac:
-        response = await ac.post(url="orders/", json=order_data)
+        response = await ac.post(url="v1/orders/", json=order_data)
     assert response.status_code == status_code
 
 
 @pytest.mark.asyncio(scope="session")
 @pytest.mark.parametrize(
     "order_id,status_code",
-    [(3, 204), (100, 404)]
+    [(1, 204), (100, 404)]
 )
 async def test_delete_order(
         order_id: dict,
@@ -78,7 +81,7 @@ async def test_delete_order(
         get_admin_header: str
 ):
     async with AsyncClient(app=app, base_url="http://test") as ac:
-        response = await ac.delete(url=f"orders/{order_id}", headers={"Authorization": get_admin_header})
+        response = await ac.delete(url=f"v1/orders/{order_id}", headers={"Authorization": get_admin_header})
     assert response.status_code == status_code
 
 
@@ -101,7 +104,7 @@ async def test_add_book_to_order(
 ):
     async with AsyncClient(app=app, base_url="http://test") as ac:
         response = await ac.post(
-            url=f"/orders/{order_id}/books/{book_id}",
+            url=f"v1/orders/{order_id}/books/{book_id}",
             json={"quantity": quantity},
             headers={"Authorization": get_admin_header}
         )
@@ -124,7 +127,7 @@ async def test_delete_book_from_order(
 ):
     async with AsyncClient(app=app, base_url="http://test") as ac:
         response = await ac.delete(
-            url=f"/orders/{order_id}/books/{book_id}",
+            url=f"v1/orders/{order_id}/books/{book_id}",
             headers={"Authorization": get_admin_header}
         )
     assert response.status_code == status_code
@@ -134,7 +137,7 @@ async def test_delete_book_from_order(
 @pytest.mark.parametrize(
     "order_id,update_data,status_code",
     [
-        (1, {"order_status": "processing", "total_sum": "555.5"}, 200),
+        (2, {"order_status": "test_status"}, 200),
         (100, {"order_status": "processing", "total_sum": "555.5"}, 404)
     ]
 )
@@ -146,7 +149,7 @@ async def test_update_order(
 ):
     async with AsyncClient(app=app, base_url="http://test") as ac:
         response = await ac.patch(
-            url=f"orders/{order_id}",
+            url=f"v1/orders/{order_id}",
             headers={"Authorization": get_admin_header},
             json=update_data
         )

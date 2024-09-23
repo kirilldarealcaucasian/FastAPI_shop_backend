@@ -7,9 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from typing import Union, Protocol
 
-from application.services.utils.filters import BookFilter
 
-from application.services.utils.filters import Pagination
+from application.services.utils.filters import Pagination, BookFilter
 from core import OrmEntityRepository
 from core.base_repos import OrmEntityRepoInterface
 from application.models import Book

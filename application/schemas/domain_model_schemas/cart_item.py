@@ -37,7 +37,6 @@ class CartItemS(BaseModel):
             raise AddBooksToCartError(
                 info="You're trying to add more books that there are in stock"
             )
-        print("QUANTITY DO IN put_books_in_cart: ", self.quantity)
         self.quantity += quantity
         book.number_in_stock -= quantity
         shopping_session.total += book.price_with_discount

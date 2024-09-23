@@ -27,7 +27,7 @@ def create_image_folder(concrete_image_folder_name: str) -> str:
         ImageConfig.images_folder,
         concrete_image_folder_name
     )
-    print("IMAGE_FOLDER_PATH: ", image_folder_path)
+
     try:
         if not Path(image_folder_path).is_dir():
             os.makedirs(image_folder_path, exist_ok=True)

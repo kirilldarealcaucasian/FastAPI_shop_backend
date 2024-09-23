@@ -4,15 +4,11 @@ from fastapi import Depends
 from fastapi.params import Cookie
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing_extensions import Annotated
 
-from application.schemas import ReturnShoppingSessionS
+from application.schemas import ReturnShoppingSessionS, ReturnUserS
 from auth.helpers import get_token_payload
 from auth.repositories import AuthRepository
-from application.models import Order
-from application.repositories.order_repo import OrderRepository
-from application.repositories.order_repo import CombinedOrderRepositoryInterface
-from application.services import OrderService, UserService, ShoppingSessionService, CartService
+from application.services import UserService, ShoppingSessionService, CartService
 from infrastructure.postgres import db_client
 from core.exceptions import UnauthorizedError, NoCookieError
 
@@ -34,8 +30,7 @@ class PermissionService(AuthRepository):
     async def get_order_permission(
             self,
             order_id: int,
-            order_repo: Annotated[CombinedOrderRepositoryInterface, Depends(OrderRepository)],
-            order_service: OrderService = Depends(),
+            user_service: UserService = Depends(),
             credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer()),
             session: AsyncSession = Depends(db_client.get_scoped_session_dependency)
     ) -> int:
@@ -46,18 +41,17 @@ class PermissionService(AuthRepository):
             raise UnauthorizedError(detail="You are not allowed to perform this operation")
 
         try:
-            order: Order = await order_service.get_all(
-                repo=order_repo,
+            user: ReturnUserS = await user_service.get_user_by_order_id(
                 session=session,
-                id=order_id
-            )
+                order_id=order_id
+            )  # if user is not owner of the order, http exception will be raised
 
         except IndexError:
             raise UnauthorizedError(
                 detail="You don't have permission to access this data"
             )
 
-        if order.user_id != user_id and not payload["role"] == "admin":
+        if user.id != user_id and not payload["role"] == "admin":
             raise UnauthorizedError(
                 detail="You don't have permission to perform this action"
             )

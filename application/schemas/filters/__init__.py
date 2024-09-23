@@ -3,4 +3,4 @@ __all__ = (
     "PaginationS"
 )
 
-from application.schemas.filters.book_filter import BookFilterS, PaginationS
+from .book_filter import BookFilterS, PaginationS

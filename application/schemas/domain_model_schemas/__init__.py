@@ -12,14 +12,14 @@ __all__ = (
     "UserS"
 )
 
-from application.schemas.domain_model_schemas.author import AuthorS
-from application.schemas.domain_model_schemas.book import BookS
-from application.schemas.domain_model_schemas.book_order_assoc import BookOrderAssocS
-from application.schemas.domain_model_schemas.cart_item import CartItemS
-from application.schemas.domain_model_schemas.category import CategoryS
-from application.schemas.domain_model_schemas.order import OrderS
-from application.schemas.domain_model_schemas.payment_details import PaymentDetailS
-from application.schemas.domain_model_schemas.publisher import PublisherS
-from application.schemas.domain_model_schemas.shopping_session import ShoppingSessionS
-from application.schemas.domain_model_schemas.image import ImageS
-from application.schemas.domain_model_schemas.user import UserS
+from .author import AuthorS
+from .book import BookS
+from .book_order_assoc import BookOrderAssocS
+from .cart_item import CartItemS
+from .category import CategoryS
+from .order import OrderS
+from .payment_details import PaymentDetailS
+from .publisher import PublisherS
+from .shopping_session import ShoppingSessionS
+from .image import ImageS
+from .user import UserS

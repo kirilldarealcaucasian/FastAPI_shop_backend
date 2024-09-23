@@ -1,19 +1,3 @@
-from application.models.models import (
-        Base,
-        User,
-        Book,
-        Order,
-        BookOrderAssoc,
-        Author,
-        Publisher,
-        Image,
-        Category,
-        ShoppingSession,
-        CartItem,
-        PaymentDetail,
-        BookCategoryAssoc,
-)
-
 __all__ = (
     "Base",
     "User",
@@ -30,3 +14,20 @@ __all__ = (
     "PaymentDetail",
     "CartItem",
 )
+
+from .models import (
+        Base,
+        User,
+        Book,
+        Order,
+        BookOrderAssoc,
+        Author,
+        Publisher,
+        Image,
+        Category,
+        ShoppingSession,
+        CartItem,
+        PaymentDetail,
+        BookCategoryAssoc,
+)
+

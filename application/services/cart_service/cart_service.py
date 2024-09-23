@@ -180,6 +180,11 @@ class CartService(EntityBaseService):
             id=dto.book_id
         )
 
+        if not book:
+            raise EntityDoesNotExist(
+                entity="Book"
+            )
+
         book_domain_model: BookS = BookS.model_validate(book, from_attributes=True)
 
         if book_domain_model.number_in_stock - dto.quantity < 0:
@@ -193,7 +198,7 @@ class CartService(EntityBaseService):
                 book_id=dto.book_id,
                 session_id=shopping_session_id
             )
-        )
+        )  # check if book already exists in the cart
         cart_item_exists: bool = True if cart_item is not None else False
 
         if not cart_item_exists:
@@ -227,13 +232,13 @@ class CartService(EntityBaseService):
             )
 
         cart_item_domain_model: CartItemS = CartItemS.model_validate(
-            cart_item,
+            obj=cart_item,
             from_attributes=True
         )
 
         shopping_session: ShoppingSession = cart_item.shopping_session
         shopping_session_domain_model: ShoppingSessionS = ShoppingSessionS.model_validate(
-            shopping_session,
+            obj=shopping_session,
             from_attributes=True
         )
 

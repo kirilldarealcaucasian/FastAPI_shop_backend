@@ -3,10 +3,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import SQLAlchemyError
 
-from application import Book
 from core import OrmEntityRepository
 
-from application.models import User, Order, BookOrderAssoc
+from application.models import User, Order, BookOrderAssoc, Book
 from typing import Protocol, Union
 
 from core.base_repos import OrmEntityRepoInterface

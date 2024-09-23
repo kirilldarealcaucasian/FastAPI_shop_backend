@@ -5,8 +5,10 @@ from uuid import UUID
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application import User, Book
-from application.models import ShoppingSession, CartItem, PaymentDetail
+from application.models import (
+    ShoppingSession, CartItem,
+    PaymentDetail, User, Book
+)
 from application.repositories.cart_repo import CombinedCartRepositoryInterface, CartRepository
 from application.repositories.payment_detail_repo import CombinedPaymentDetailRepoInterface, PaymentDetailRepository
 from application.repositories.shopping_session_repo import CombinedShoppingSessionRepositoryInterface, \

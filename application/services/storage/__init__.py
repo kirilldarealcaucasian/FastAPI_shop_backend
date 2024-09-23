@@ -4,6 +4,6 @@ __all__ = (
     "StorageServiceInterface",
 )
 
-from application.services.storage.internal_storage.internal_storage_service import InternalStorageService
-from application.services.storage.s3_storage import S3StorageService
-from application.services.storage.storage_service_interface import StorageServiceInterface
+from .internal_storage.internal_storage_service import InternalStorageService
+from .s3_storage import S3StorageService
+from .storage_service_interface import StorageServiceInterface

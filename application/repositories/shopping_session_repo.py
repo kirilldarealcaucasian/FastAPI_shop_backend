@@ -6,10 +6,8 @@ from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy.exc import SQLAlchemyError
 from typing import Protocol
 
-from application import Book
-from core import OrmEntityRepository
-from application.models import ShoppingSession, CartItem
-from core.base_repos import OrmEntityRepoInterface
+from application.models import ShoppingSession, CartItem, Book
+from core.base_repos import OrmEntityRepoInterface, OrmEntityRepository
 from core.exceptions import NotFoundError, DBError
 
 

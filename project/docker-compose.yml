@@ -9,34 +9,9 @@ services:
 
     command: bash -c "uvicorn application.cmd:app --reload --host 0.0.0.0 --port 8000"
 
-#    environment:
-#      - MODE=TEST
-#      - LOG_LEVEL=INFO
-#
-#      - DB_USER=postgres
-#      - DB_PASSWORD=postgres
-#      - DB_SERVER=db
-#      - DB_PORT=5432
-#      - DB_NAME=proj_db
-#
-#      - TEST_POSTGRES_USER=postgres
-#      - TEST_POSTGRES_PASSWORD=postgres
-#      - TEST_POSTGRES_SERVER=db
-#      - TEST_POSTGRES_PORT=5432
-#      - TEST_POSTGRES_DB=proj_db_test
-#
-#      - SMTP_HOST=smtp.gmail.com
-#      - SMTP_PORT=465
-#      - SMTP_USER=richi.mosberg@gmail.com
-#      - SMTP_PASS=wigfzahnhuzdfwge
-#
-#      - REDIS_HOST=redis
-#      - REDIS_PORT=6379
-#
-#      - RABBIT_USER=rmuser
-#      - RABBIT_PASSWORD=rmpassword
-#      - RABBIT_HOST=rabbitmq
-#      - RABBIT_PORT=5672
+    env_file:
+      - ../core/config/.env
+      - ../auth/.env
 
     volumes:
       - shared_volume:/project/application/static/images
@@ -59,7 +34,7 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_SERVER=db
-      - POSTGRES_PORT=5432
+      - POSTGRES_PORT=5433
       - POSTGRES_DB=proj_db
 
     ports:

@@ -43,7 +43,7 @@ __all__ = (
 
 
     "BookFilterS",
-
+    "BookOrderPrimaryIdentifier",
     "ShoppingSessionIdS",
     "CartSessionId",
     "AddBookToCartS",
@@ -57,7 +57,7 @@ __all__ = (
     "CartPrimaryIdentifier",
 )
 
-from application.schemas.book_schemas import (
+from .book_schemas import (
     ReturnBookS,
     CreateBookS,
     UpdateBookS,
@@ -66,7 +66,7 @@ from application.schemas.book_schemas import (
     BookIdS
 )
 
-from application.schemas.order_schemas import (
+from .order_schemas import (
     CreateOrderS,
     UpdateOrderS,
     OrderSummaryS,
@@ -79,7 +79,7 @@ from application.schemas.order_schemas import (
     OrderIdS
 )
 
-from application.schemas.user_schemas import (
+from .user_schemas import (
     RegisterUserS,
     UpdatePartiallyUserS,
     UpdateUserS,
@@ -89,15 +89,15 @@ from application.schemas.user_schemas import (
     AuthenticatedUserS
 )
 
-from application.schemas.image_schemas import (ReturnImageS, CreateImageS)
-from application.schemas.author_schemas import (
+from .image_schemas import (ReturnImageS, CreateImageS)
+from .author_schemas import (
     CreateAuthorS,
     UpdateAuthorS,
     UpdatePartiallyAuthorS,
     ReturnAuthorS
 )
 
-from application.schemas.publisher_schemas import (
+from .publisher_schemas import (
     CreatePublisherS,
     UpdatePublisherS,
     UpdatePartiallyPublisherS,
@@ -105,21 +105,21 @@ from application.schemas.publisher_schemas import (
     PublisherId
 )
 
-from application.schemas.category_schemas import (
+from .category_schemas import (
     ReturnCategoryS,
     CreateCategoryS,
     UpdateCategoryS,
     CategoryId
 )
 
-from application.schemas.shopping_session_schemas import (
+from .shopping_session_schemas import (
     CreateShoppingSessionS,
     ReturnShoppingSessionS,
     UpdatePartiallyShoppingSessionS,
     ShoppingSessionIdS
 )
 
-from application.schemas.cart_schemas import (
+from .cart_schemas import (
     ReturnCartS,
     AddBookToCartS,
     CartSessionId,
@@ -127,6 +127,7 @@ from application.schemas.cart_schemas import (
     CartPrimaryIdentifier
 )
 
-from application.schemas.filters import BookFilterS
-from application.schemas.payment_schemas import CreatePaymentS, ReturnPaymentS
+from .filters import BookFilterS
+from .payment_schemas import CreatePaymentS, ReturnPaymentS
+from .book_order_schemas import BookOrderPrimaryIdentifier
 

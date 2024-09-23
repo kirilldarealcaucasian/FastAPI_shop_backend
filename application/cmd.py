@@ -19,18 +19,14 @@ from logger import logger
 from infrastructure.redis import redis_client
 
 
-# from infrastructure.rabbitmq.connector import rabbit_connector
-
-
 app = FastAPI()
 
-
 app.add_middleware(
-    CORSMiddleware,
+    CORSMiddleware, # noqa
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["8"]
+    allow_headers=["*"]
 )
 
 
@@ -46,7 +42,6 @@ for router in (
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
     start_time = time.time()
-    response = None
     try:
         response = await call_next(request)
     except Exception as e:
@@ -56,6 +51,7 @@ async def add_process_time_header(request: Request, call_next):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content={"error": "Something went wrong"},
             )
+        raise e
     process_time = time.time() - start_time
     logger.info("Request execution time: ", extra={
         "request_process_time": round(process_time, 3)
@@ -63,7 +59,7 @@ async def add_process_time_header(request: Request, call_next):
     response.headers["X-Process-Time"] = str(process_time)
     return response
 
-if settings.MODE != "TEST":
+if settings.MODE != "LOCAL":
     @app.middleware("http")
     async def throttle_requests(request: Request, call_next):
         """aborts requests if request_counter >= threshold within time interval"""

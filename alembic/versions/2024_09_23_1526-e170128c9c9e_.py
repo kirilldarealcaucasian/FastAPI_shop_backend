@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 7757241b98ef
+Revision ID: e170128c9c9e
 Revises: 
-Create Date: 2024-09-07 15:01:47.191567
+Create Date: 2024-09-23 15:26:41.890860
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '7757241b98ef'
+revision: str = 'e170128c9c9e'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -127,16 +127,17 @@ def upgrade() -> None:
     sa.Column('order_id', sa.BIGINT(), nullable=False),
     sa.Column('book_id', sa.UUID(), nullable=False),
     sa.Column('count_ordered', sa.BIGINT(), server_default='1', nullable=False),
-    sa.Column('id', sa.BIGINT(), autoincrement=True, nullable=False),
-    sa.ForeignKeyConstraint(['book_id'], ['books.id'], name=op.f('fk_book_order_assoc_book_id_books'), ondelete='CASCADE'),
+    sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['book_id'], ['books.id'], name=op.f('fk_book_order_assoc_book_id_books'), ondelete='RESTRICT'),
     sa.ForeignKeyConstraint(['order_id'], ['orders.id'], name=op.f('fk_book_order_assoc_order_id_orders'), ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id', name=op.f('pk_book_order_assoc')),
+    sa.PrimaryKeyConstraint('order_id', 'book_id', name='pk_book_order_assoc'),
     sa.UniqueConstraint('order_id', 'book_id', name='uq_book_order_assoc_order_id_book_id')
     )
     op.create_table('cart_items',
     sa.Column('session_id', sa.UUID(), nullable=False),
     sa.Column('book_id', sa.UUID(), nullable=False),
-    sa.Column('quantity', sa.BIGINT(), nullable=False),
+    sa.Column('quantity', sa.BIGINT(), server_default='1', nullable=False),
     sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['book_id'], ['books.id'], name=op.f('fk_cart_items_book_id_books'), ondelete='RESTRICT'),

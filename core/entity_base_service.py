@@ -32,7 +32,7 @@ from application.schemas import (
     CreateCategoryS, ReturnCategoryS,
     ReturnShoppingSessionS, ShoppingSessionIdS,
     CreateShoppingSessionS,
-    UpdatePartiallyShoppingSessionS, BookIdS, CartPrimaryIdentifier
+    UpdatePartiallyShoppingSessionS, BookIdS, CartPrimaryIdentifier, BookOrderPrimaryIdentifier
 )
 from application.schemas.domain_model_schemas import \
     (
@@ -92,7 +92,7 @@ DomainModelDataT = TypeVar(
 
 MergedDataT = TypeVar("MergedDataT", )
 
-IdentityDataT = TypeVar("IdentityDataT", str, int, UUID, CartPrimaryIdentifier)
+IdentityDataT = TypeVar("IdentityDataT", str, int, UUID, CartPrimaryIdentifier, BookOrderPrimaryIdentifier)
 
 RepoInterface = TypeVar("RepoInterface")
 

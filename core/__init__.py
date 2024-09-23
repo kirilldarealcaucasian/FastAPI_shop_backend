@@ -4,8 +4,8 @@ __all__ = (
     "ImageConfig",
 )
 
-from core.image_conf.conf import ImageConfig
-from core.base_repos import OrmEntityRepository, OrmEntityRepoInterface
-from core.entity_base_service import EntityBaseService
+from .image_conf.conf import ImageConfig
+from .base_repos import OrmEntityRepository, OrmEntityRepoInterface
+from .entity_base_service import EntityBaseService
 
 

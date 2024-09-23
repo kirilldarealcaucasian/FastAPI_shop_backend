@@ -39,7 +39,7 @@ class BaseFilter(BaseModel):
                 # case for a nested filter
                 try:
                     stmt = getattr(self, filter_name, None).filter(stmt)
-                except StatementError:
+                except Exception:
                     logger.debug("filter error", exc_info=True)
                     raise FilterError
 
@@ -82,7 +82,7 @@ class BaseFilter(BaseModel):
                         *[desc(value) for value in directions["desc"]],  # apply order_by for "descending" fields
                         *[value for value in directions["asc"]])
             return stmt
-        except (StatementError):
+        except StatementError:
             logger.debug("incorrect order_by filter format", exc_info=True)
             raise OrderingFilterError
 

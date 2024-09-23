@@ -5,7 +5,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 
 from auth.config.auth_config import auth_conf
 from datetime import timedelta
-from auth.schemas import  TokenPayload, Token
+from auth.schemas import TokenPayload, Token
 
 import jwt
 

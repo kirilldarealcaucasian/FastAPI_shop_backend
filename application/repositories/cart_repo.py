@@ -4,8 +4,7 @@ from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, joinedload
 
-from application import Book
-from application.models import CartItem, ShoppingSession
+from application.models import CartItem, ShoppingSession, Book
 from application.schemas import CartPrimaryIdentifier
 from application.schemas.domain_model_schemas import CartItemS
 from core import OrmEntityRepository

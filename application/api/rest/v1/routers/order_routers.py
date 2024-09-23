@@ -30,7 +30,7 @@ async def get_all_orders(
 @router.get("/{order_id}",
             status_code=status.HTTP_200_OK,
             response_model=ReturnOrderS,
-            dependencies=[Depends(PermissionService().get_order_permission)]
+            # dependencies=[Depends(PermissionService().get_order_permission)]
             )
 @cachify(
     ReturnOrderS,
@@ -82,8 +82,9 @@ async def delete_order(
 
 @router.post(
     '/items',
-    dependencies=[Depends(PermissionService().get_order_permission)],
+    # dependencies=[Depends(PermissionService().get_order_permission)],
     status_code=status.HTTP_200_OK,
+    response_model=ReturnOrderS
 )
 async def add_book_to_order(
         order_id: int,

@@ -4,9 +4,11 @@ from fastapi import Depends
 from pydantic import ValidationError, PydanticSchemaGenerationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application import User
-from application.models import Order, BookOrderAssoc
-from application.repositories.order_repo import CombinedOrderRepositoryInterface, OrderRepository
+from application.models import Order, BookOrderAssoc, User
+from application.repositories.order_repo import (
+    CombinedOrderRepositoryInterface,
+    OrderRepository
+)
 from application.repositories.user_repo import CombinedUserInterface
 from application.schemas.domain_model_schemas import UserS
 from application.repositories.user_repo import UserRepository
@@ -62,7 +64,6 @@ class UserService(EntityBaseService):
             session=session,
             id=id
         )  # if not exits http exception will be raised
-        print("USER: ", user)
 
         return ReturnUserS(
             id=user.id,
@@ -135,9 +136,9 @@ class UserService(EntityBaseService):
             id=user.id,
             first_name=user.first_name,
             last_name=user.last_name,
-            email=user.last_name,
+            email=user.email,
             gender=user.gender,
-            role_name=user.gender,
+            role_name=user.role_name,
         )
 
     async def delete_user(

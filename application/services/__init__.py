@@ -11,14 +11,14 @@ __all__ = (
     "PaymentService",
 )
 
-from application.services.user_service import UserService
-from application.services.book_service import BookService
-from application.services.author_service import AuthorService
-from application.services.publisher_service import PublisherService
-from application.services.image_service import ImageService
-from application.services.category_service import CategoryService
-from application.services.shopping_session_service import ShoppingSessionService
-from application.services.cart_service import CartService
-from application.services.payment_service import PaymentService
-from application.services.order_service.order_service import OrderService
+from .user_service import UserService
+from .book_service import BookService
+from .author_service import AuthorService
+from .publisher_service import PublisherService
+from .image_service import ImageService
+from .category_service import CategoryService
+from .shopping_session_service import ShoppingSessionService
+from .cart_service import CartService
+from .payment_service import PaymentService
+from .order_service.order_service import OrderService
 
