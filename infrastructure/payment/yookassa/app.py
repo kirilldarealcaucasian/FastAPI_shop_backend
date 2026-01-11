@@ -1,10 +1,10 @@
 import asyncio
 import json
-from typing import Protocol, TypeAlias, Annotated
+from typing import Annotated, Protocol, TypeAlias
+from uuid import UUID, uuid4
 
 from fastapi import Depends
-from yookassa import Payment, Configuration, Refund
-from uuid import uuid4, UUID
+from yookassa import Configuration, Payment, Refund
 
 from application.schemas import CreatePaymentS, ReturnPaymentS
 from core.config import settings
@@ -14,10 +14,11 @@ __all__ = (
     "YooKassaPaymentProvider"
 )
 
-from core.exceptions import PaymentObjectCreationError, PaymentRetrieveStatusError, PaymentFailedError, \
-    RefundFailedError
 from logger import logger
+
 from application.services.order_service.order_service import OrderService
+from core.exceptions import (PaymentFailedError, PaymentObjectCreationError,
+                             PaymentRetrieveStatusError, RefundFailedError)
 
 PaymentID: TypeAlias = UUID
 
@@ -164,7 +165,7 @@ class YooKassaPaymentProvider:
                     shopping_session_id=shopping_session_id,
                     status="failed"
                 )
-            except Exception as e:
+            except Exception:
                 logger.error("failed to process canceled payment")
 
     def make_refund(

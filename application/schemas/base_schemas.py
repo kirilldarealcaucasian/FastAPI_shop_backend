@@ -1,8 +1,10 @@
+from decimal import Decimal
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class Id(BaseModel):
-    id: int | str
+    id: int
 
 
 class Config(BaseModel):
@@ -11,8 +13,8 @@ class Config(BaseModel):
 
 class BookBaseS(Config):
     name: str = Field(min_length=2)
-    description: str | None
-    price_per_unit: float = Field(ge=1.0)
+    summary: str | None
+    price_per_unit: Decimal = Field(ge=1.0)
     number_in_stock: int = Field(ge=0)
 
 

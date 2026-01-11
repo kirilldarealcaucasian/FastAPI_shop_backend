@@ -1,14 +1,13 @@
 import datetime
-from bcrypt import hashpw, checkpw
+from datetime import timedelta
+
+import jwt
+from bcrypt import checkpw, hashpw
 from fastapi import HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials
 
 from auth.config.auth_config import auth_conf
-from datetime import timedelta
-from auth.schemas import TokenPayload, Token
-
-import jwt
-
+from auth.schemas import Token, TokenPayload
 from core.exceptions import UnauthorizedError
 
 
@@ -100,20 +99,17 @@ def issue_token(
             "role": data.role
         }
         expire_timedelta = timedelta(hours=auth_conf.ACCESS_TOKEN_EXPIRE_HOURS)
-        token = encode_jwt(
+        return encode_jwt(
             payload=payload,
             expire_timedelta=expire_timedelta
         )
-        return token
-    else:
-        payload = {
-            "sub": data.email,
-        }
-        expire_timedelta = timedelta(days=auth_conf.REFRESH_TOKEN_EXPIRE_DAYS)
-        token = encode_jwt(
-            payload=payload,
-            expire_timedelta=expire_timedelta
-        )
-        return token
+    payload = {
+        "sub": data.email,
+    }
+    expire_timedelta = timedelta(days=auth_conf.REFRESH_TOKEN_EXPIRE_DAYS)
+    return encode_jwt(
+        payload=payload,
+        expire_timedelta=expire_timedelta
+    )
 
 

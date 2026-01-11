@@ -4,7 +4,4 @@ __all__ = (
 )
 
 
-from .yookassa.app import (
-    PaymentProviderInterface,
-    YooKassaPaymentProvider
-)
+from .yookassa.app import PaymentProviderInterface, YooKassaPaymentProvider

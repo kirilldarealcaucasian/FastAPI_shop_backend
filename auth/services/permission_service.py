@@ -6,11 +6,12 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.schemas import ReturnShoppingSessionS, ReturnUserS
+from application.services import (CartService, ShoppingSessionService,
+                                  UserService)
 from auth.helpers import get_token_payload
 from auth.repositories import AuthRepository
-from application.services import UserService, ShoppingSessionService, CartService
+from core.exceptions import NoCookieError, UnauthorizedError
 from infrastructure.postgres import db_client
-from core.exceptions import UnauthorizedError, NoCookieError
 
 
 class PermissionService(AuthRepository):
@@ -73,6 +74,7 @@ class PermissionService(AuthRepository):
 
         if shopping_session:
             return shopping_session_id
+        return None
 
     async def get_cart_permission_for_user(
             self,

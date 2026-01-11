@@ -1,5 +1,6 @@
 import json
-from time import strptime, mktime
+from time import mktime, strptime
+
 from core.config import settings
 
 
@@ -19,5 +20,4 @@ def parse_logs_journal() -> bytes:
         if not logs:
             return b''
         json_data = json.dumps(logs)
-        encoded_json = json_data.encode("utf-8")
-    return encoded_json
+        return json_data.encode("utf-8")

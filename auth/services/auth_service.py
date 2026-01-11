@@ -1,13 +1,16 @@
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
-from auth.repositories import AuthRepository
-from application.schemas import LoginUserS, RegisterUserS, ReturnUserS, AuthenticatedUserS
-from auth import helpers
-from auth.helpers import validate_token, get_token_payload
-from auth.schemas.token_schema import TokenPayload, AuthResponse
+
 from application.models import User
-from core.exceptions import DuplicateError, AlreadyExistsError, UnauthorizedError, NotFoundError
+from application.schemas import (AuthenticatedUserS, LoginUserS, RegisterUserS,
+                                 ReturnUserS)
+from auth import helpers
+from auth.helpers import get_token_payload, validate_token
+from auth.repositories import AuthRepository
+from auth.schemas.token_schema import AuthResponse, TokenPayload
+from core.exceptions import (AlreadyExistsError, DuplicateError, NotFoundError,
+                             UnauthorizedError)
 
 
 class AuthService:

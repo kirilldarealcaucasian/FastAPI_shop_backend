@@ -4,13 +4,13 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from infrastructure.postgres import db_client
-from application.schemas import CreateOrderS, ReturnOrderS, ShortenedReturnOrderS,\
-    UpdatePartiallyOrderS, AddBookToOrderS
+from application.schemas import (AddBookToOrderS, CreateOrderS, ReturnOrderS,
+                                 ShortenedReturnOrderS, UpdatePartiallyOrderS)
 from application.schemas.filters import PaginationS
 from application.services import OrderService
-from core.utils.cache import cachify
 from auth.services.permission_service import PermissionService
+from core.utils.cache import cachify
+from infrastructure.postgres import db_client
 
 router = APIRouter(prefix="/v1/orders", tags=["Orders"])
 

@@ -1,20 +1,15 @@
 from datetime import timedelta
-from fastapi import Depends, status, APIRouter
+
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from application.schemas import (ReturnUserS, ReturnUserWithOrdersS,
+                                 UpdatePartiallyUserS, UpdateUserS)
 from application.schemas.filters import PaginationS
-from application.services import (
-    UserService
-)
-from infrastructure.postgres import db_client
-
-from application.schemas import (UpdateUserS,
-                                 UpdatePartiallyUserS,
-                                 ReturnUserS, ReturnUserWithOrdersS
-                                 )
+from application.services import UserService
 from auth.services.permission_service import PermissionService
 from core.utils.cache import cachify
-
+from infrastructure.postgres import db_client
 
 router = APIRouter(prefix="/v1/users", tags=["Users"])
 

@@ -1,4 +1,4 @@
-from application.models import BookOrderAssoc, Book
+from application.models import Book, BookOrderAssoc
 from application.schemas.order_schemas import AssocBookS
 
 

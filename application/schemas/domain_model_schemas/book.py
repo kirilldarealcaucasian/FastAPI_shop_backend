@@ -1,6 +1,4 @@
-from uuid import UUID
-
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict
 
 from core.exceptions import DecrementNumberInStockError
 
@@ -8,25 +6,25 @@ from core.exceptions import DecrementNumberInStockError
 class BookS(BaseModel, validate_assignment=True):
     model_config = ConfigDict(from_attributes=True)
 
-    id: UUID | None = None
-    isbn: str | None = None
-    name: str | None = None
-    description: str | None = None
-    price_per_unit: float | None = None
-    number_in_stock: int | None = None
-    category_id: int | None = None
-    rating: float | None = None
-    discount: int | None = None
-    price_with_discount: float | None = Field(
-        default=lambda model: model.price_per_unit - (model.discount * 0.01) * model.price_per_unit
-    )
+    id: int
+    isbn: str
+    name: str
+    description: str
+    price_per_unit: float
+    number_in_stock: int
+    category_id: int
+    rating: float
+    discount: int
 
-    def decrement_number_in_stock(self, val: int):
-        if self.number_in_stock - val < 0:
+    def decrement_number_in_stock(self, quantity: int):
+        if self.number_in_stock > quantity:  # type: ignore
             raise DecrementNumberInStockError(
                 info="You're trying to order more books that available"
             )
-        self.number_in_stock -= val
+        self.number_in_stock -= quantity
 
-    def increment_number_in_stock(self, val: int):
-        self.number_in_stock += val
+    def increment_number_in_stock(self, quantity: int):
+        self.number_in_stock += quantity
+
+    def is_enough_in_stock(self, quantity: int) -> bool:
+        return self.number_in_stock >= quantity

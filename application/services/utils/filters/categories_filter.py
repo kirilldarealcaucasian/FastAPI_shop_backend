@@ -1,6 +1,7 @@
+from pydantic import Field
+
 from application.models import Category
 from application.services.utils.filters.base_filter import BaseFilter
-from pydantic import Field
 
 
 class CategoryFilter(BaseFilter):

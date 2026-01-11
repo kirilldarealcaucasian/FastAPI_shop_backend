@@ -2,29 +2,31 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import Depends, UploadFile
-from pydantic import ValidationError, PydanticSchemaGenerationError
+from loguru import logger
+from pydantic import PydanticSchemaGenerationError, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.models import Image
+from application.repositories.image_repo import ImageRepository
+from application.schemas import CreateImageS, ReturnBookS, ReturnImageS
 from application.schemas.domain_model_schemas import ImageS
+from application.services.book_service import BookService
+from application.services.storage import (InternalStorageService,
+                                          StorageServiceInterface)
 from core import EntityBaseService
 from core.base_repos import OrmEntityRepoInterface
-from core.exceptions import RelatedEntityDoesNotExist, DomainModelConversionError, RemoteBucketDeletionError, \
-    DeletionError, ServerError
-from application.repositories.image_repo import ImageRepository
-from application.schemas import ReturnImageS, CreateImageS, ReturnBookS
-from application.services.book_service import BookService
-from application.services.storage import InternalStorageService, StorageServiceInterface
-from logger import logger
+from core.exceptions import (DeletionError, DomainModelConversionError,
+                             RelatedEntityDoesNotExist,
+                             RemoteBucketDeletionError, ServerError)
 
 
 class ImageService(EntityBaseService):
     def __init__(
         self,
-        image_repo: Annotated[
-            OrmEntityRepoInterface, Depends(ImageRepository)
+        image_repo: Annotated[OrmEntityRepoInterface, Depends(ImageRepository)],
+        storage_service: Annotated[
+            StorageServiceInterface, Depends(InternalStorageService)
         ],
-        storage_service: Annotated[StorageServiceInterface, Depends(InternalStorageService)],
         book_service: Annotated[BookService, Depends(BookService)],
     ):
         super().__init__(repository=image_repo)
@@ -36,18 +38,12 @@ class ImageService(EntityBaseService):
         self, session: AsyncSession, book_id: UUID | int
     ) -> list[ReturnImageS]:
         images: list[Image] = await super().get_all(
-            session=session,
-            repo=self._image_repo,
-            book_id=book_id
+            session=session, repo=self._image_repo, book_id=book_id
         )
         res: list[ReturnImageS] = []
         for image in images:
             res.append(
-                ReturnImageS(
-                    id=image.id,
-                    book_id=str(image.book_id),
-                    url=image.url
-                )
+                ReturnImageS(id=image.id, book_id=str(image.book_id), url=image.url)
             )
         return res
 
@@ -58,8 +54,7 @@ class ImageService(EntityBaseService):
         image: UploadFile,
     ):
         book: ReturnBookS | None = await self._book_service.get_book_by_id(
-            session=session,
-            id=book_id
+            session=session, id=book_id
         )
 
         if not book:
@@ -81,15 +76,13 @@ class ImageService(EntityBaseService):
             logger.error(
                 "Failed to generate domain model",
                 extra={"image_data": image_data},
-                exc_info=True
-                )
+                exc_info=True,
+            )
             raise DomainModelConversionError()
 
         if image_data:
             await super().create(
-                repo=self._image_repo,
-                session=session,
-                domain_model=domain_model
+                repo=self._image_repo, session=session, domain_model=domain_model
             )
             await super().commit(session=session)
 
@@ -107,9 +100,7 @@ class ImageService(EntityBaseService):
         )  # if no exception was raised
 
         try:
-            self._storage_service.delete_image(
-                image_url=image_url, image_id=image_id
-            )
+            self._storage_service.delete_image(image_url=image_url, image_id=image_id)
         except (RemoteBucketDeletionError, DeletionError):
             await session.rollback()
             raise ServerError(detail="Something went wrong while deleting")

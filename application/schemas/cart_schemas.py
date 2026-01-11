@@ -1,5 +1,7 @@
 from uuid import UUID
+
 from pydantic import BaseModel, Field
+
 from application.schemas.order_schemas import AssocBookS
 
 
@@ -9,7 +11,7 @@ class ReturnCartS(BaseModel):
 
 
 class AddBookToCartS(BaseModel):
-    book_id: UUID | str | int
+    book_id: int
     quantity: int
 
 
@@ -18,10 +20,10 @@ class CartSessionId(BaseModel):
 
 
 class DeleteBookFromCartS(BaseModel):
-    book_id: UUID
+    book_id: int
     quantity: int = Field(default=1, ge=1)
 
 
 class CartPrimaryIdentifier(BaseModel):
-    book_id: UUID
+    book_id: int
     session_id: UUID

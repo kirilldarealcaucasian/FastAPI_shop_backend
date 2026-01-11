@@ -1,18 +1,19 @@
+import asyncio
 import json
+import os
+from datetime import datetime
 from typing import Generator
+
 import pytest
 import pytest_asyncio
-import asyncio
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import insert
 
-from core.config import settings
-from infrastructure.postgres import db_client
-from application.models import Base, User, Book, BookOrderAssoc, Author, Publisher, Order, Image, Category, \
-    BookCategoryAssoc, CartItem, ShoppingSession
 from application.cmd import app
-from datetime import datetime
-import os
+from application.models import (Author, Base, Book, BookCategoryAssoc,
+                                BookOrderAssoc, CartItem, Category, Image,
+                                Order, Publisher, ShoppingSession, User)
+from infrastructure.postgres import db_client
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)

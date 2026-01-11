@@ -1,18 +1,15 @@
-from uuid import UUID
-from fastapi import Depends, status, APIRouter
-from sqlalchemy.ext.asyncio import AsyncSession
-from application.services import BookService
-from infrastructure.postgres import db_client
-from application.schemas import (
-    ReturnBookS,
-    CreateBookS,
-    UpdateBookS,
-    UpdatePartiallyBookS,
-    BookIdS
-)
-from core.utils.cache import cachify
 from datetime import timedelta
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from application.schemas import (BookIdS, CreateBookS, ReturnBookS,
+                                 UpdateBookS, UpdatePartiallyBookS)
+from application.services import BookService
 from application.services.utils.filters import BookFilter, Pagination
+from core.utils.cache import cachify
+from infrastructure.postgres import db_client
 
 router = APIRouter(prefix="/v1/books", tags=["Books CRUD"])
 

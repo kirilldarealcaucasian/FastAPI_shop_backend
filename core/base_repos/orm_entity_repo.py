@@ -1,149 +1,143 @@
+from typing import Generic, Protocol, Sequence, Type, TypeAlias, TypeVar, Union
 from uuid import UUID
 
-from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from core.exceptions.storage_exceptions import (
-    DuplicateError,
-    DBError, NotFoundError
-)
-from sqlalchemy.exc import NoSuchTableError, NoReferenceError
-from typing import TypeVar, TypeAlias, Optional, Union
-from application.schemas.domain_model_schemas import \
-    (
-    AuthorS, BookS, BookOrderAssocS,
-    CartItemS, CategoryS, OrderS,
-    PaymentDetailS, PublisherS, ShoppingSessionS
-)
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import DeclarativeBase
 
-DomainModelDataT = TypeVar(
-    "DomainModelDataT",
-    AuthorS, BookS, BookOrderAssocS,
-    CartItemS, CategoryS, OrderS,
-    PaymentDetailS, PublisherS, ShoppingSessionS
+from application.models.models import Base, BaseWithoutId
+from core.exceptions.storage_exceptions import (ConflictError, DBError,
+                                                DuplicateError, NotFoundError)
+
+Id: TypeAlias = int | UUID
+BaseT_co = TypeVar(
+    "BaseT_co", bound=Union[DeclarativeBase, Base, BaseWithoutId], covariant=True
 )
-
-Id: TypeAlias = Optional[Union[str, int, UUID]]
-
-__all__ = (
-    "OrmEntityRepository",
+OrmModelT = TypeVar(
+    "OrmModelT",
 )
 
 
-class OrmEntityRepository:
-    model = None
+__all__ = ("OrmEntityRepository",)
+
+
+class OrmEntityRepoInterface(Protocol, Generic[OrmModelT]):
+    @property
+    def model(self) -> Type[OrmModelT]:
+        raise NotImplementedError
 
     async def create(
-            self,
-            session: AsyncSession,
-            domain_model: DomainModelDataT,
-    ) -> Optional[Id | DomainModelDataT]:
-        from logger import logger
-
-        to_add = None
-
-        try:
-            to_add = self.model(**domain_model.model_dump(exclude_unset=True))
-        except Exception as e:
-            raise DBError(
-                traceback=str(e)
-            )
-        try:
-            session.add(to_add)
-            await session.commit()
-        except NoSuchTableError as e:
-            raise DBError(
-                traceback=str(e)
-            )
-        except IntegrityError as e:
-            raise DuplicateError(
-                entity=self.model.__name__,
-                traceback=str(e)
-            )
-
-        except NoReferenceError as e:
-            raise DBError(
-                traceback=str(e)
-            )
-        try:
-            # in case primary identifier is not called id or is composite
-            added_entity_id = to_add.id
-        except AttributeError:
-            return domain_model
-        logger.info(f"added {self.model}: {added_entity_id}")
-        return added_entity_id
+        self,
+        session: AsyncSession,
+        orm_model: OrmModelT,
+    ) -> OrmModelT: ...
 
     async def get_all(
-            self,
-            session: AsyncSession,
-            page: int = 0,
-            limit: int = 5,
-            **filters,
-    ) -> list:
-        stmt = select(self.model).filter_by(**filters).offset(page * limit).limit(limit)
-        try:
-            domain_models: list | [] = (await session.scalars(stmt)).all()
-        except NoSuchTableError as e:
-            raise DBError(
-                traceback=str(e)
-            )
-
-        if not domain_models or domain_models is None:
-            return []
-
-        return list(domain_models)
+        self,
+        session: AsyncSession,
+        page: int = 0,
+        limit: int = 5,
+        **filters,
+    ) -> list[OrmModelT]: ...
 
     async def update(
-            self,
-            domain_model: DomainModelDataT,
-            instance_id: int | UUID,
-            session: AsyncSession,
-    ) -> model:
-        res = await self.get_all(session=session, id=instance_id)  # check existence of the entity
-
-        if not res:
-            raise NotFoundError(entity=self.model.__name__)
-
-        try:
-            to_update: dict = domain_model.model_dump(exclude_unset=True, exclude_none=True)
-        except Exception as e:
-            raise DBError(
-                traceback=str(e)
-            )
-
-        try:
-            stmt = update(self.model).where(self.model.id == instance_id).values(**to_update)
-            await session.execute(stmt)
-            await session.commit()
-        except (IntegrityError, NoReferenceError, TypeError) as e:
-            raise DBError(
-                traceback=str(e)
-            )
-        session.expire_all()
-        updated_entity: list = await self.get_all(session=session, id=instance_id)
-        if not updated_entity:
-            raise DBError(
-                traceback="Entity wasn't found after update operation"
-            )
-        return updated_entity[0]
+        self,
+        orm_model: OrmModelT,
+        instance_id: int | UUID,
+        session: AsyncSession,
+    ) -> OrmModelT: ...
 
     async def delete(
-            self,
-            session: AsyncSession,
-            instance_id: int | str | UUID,
-    ) -> None:
-        instance = await self.get_all(session=session, id=instance_id)
+        self,
+        session: AsyncSession,
+        instance_id: Id,
+    ) -> None: ...
 
-        if not instance:
+    async def get_by_id(
+        self,
+        session: AsyncSession,
+        id: Id,
+    ) -> OrmModelT | None: ...
+
+    async def commit(self, session: AsyncSession): ...
+
+
+class OrmEntityRepository(Generic[OrmModelT]):
+    """model is assigned in the child repo"""
+
+    @property
+    def model(self) -> Type[OrmModelT]: ...
+
+    async def create(
+        self,
+        session: AsyncSession,
+        orm_model: OrmModelT,
+    ) -> OrmModelT:
+        session.add(orm_model)
+        try:
+            await session.commit()
+            await session.refresh(orm_model)
+        except IntegrityError as e:
+            raise DuplicateError(entity=self.model.__name__, traceback=str(e)) from e
+        except SQLAlchemyError as e:
+            raise DBError(str(e)) from e
+        return orm_model
+
+    async def get_all(
+        self,
+        session: AsyncSession,
+        page: int = 0,
+        limit: int = 5,
+        **filters,
+    ) -> list[OrmModelT]:
+        stmt = select(self.model).filter_by(**filters).offset(page * limit).limit(limit)
+        try:
+            orm_models: Sequence = (await session.scalars(stmt)).all()
+        except SQLAlchemyError as e:
+            raise DBError(traceback=str(e)) from e
+        return list(orm_models)
+
+    async def update(
+        self,
+        orm_model: OrmModelT,
+        instance_id: int | UUID,
+        session: AsyncSession,
+    ) -> OrmModelT:
+        res: list[OrmModelT] = await self.get_all(
+            session=session, id=instance_id
+        )  # check existence of the entity
+
+        if len(res) == 0:
             raise NotFoundError(entity=self.model.__name__)
 
-        instance = instance[0]
-        await session.delete(instance)
+        try:
+            session.add(orm_model)
+            await session.commit()
+            await session.refresh(orm_model)
+        except IntegrityError as e:
+            raise ConflictError(entity=self.model, traceback=str(e)) from e
+        except SQLAlchemyError as e:
+            raise DBError(str(e)) from e
+        return orm_model
+
+    async def delete(
+        self,
+        session: AsyncSession,
+        instance_id: Id,
+    ) -> None:
+        data: list[OrmModelT] = await self.get_all(session=session, id=instance_id)
+
+        if len(data) == 0:
+            raise NotFoundError(entity=self.model.__name__)
+
+        try:
+            await session.delete(data[0])
+        except SQLAlchemyError as e:
+            raise DBError(str(e)) from e
 
     async def commit(self, session: AsyncSession):
-        from logger import logger
         try:
             await session.commit()
         except SQLAlchemyError as e:
-            logger.error("Error while committing session", exc_info=True)
-            raise DBError(traceback=str(e))
+            raise DBError(traceback=str(e)) from e

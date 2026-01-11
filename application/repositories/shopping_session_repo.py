@@ -1,14 +1,14 @@
+from typing import Protocol
 from uuid import UUID
 
-from sqlalchemy import select, and_, delete
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy import and_, delete, select
 from sqlalchemy.exc import SQLAlchemyError
-from typing import Protocol
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload, selectinload
 
-from application.models import ShoppingSession, CartItem, Book
+from application.models import Book, CartItem, ShoppingSession
 from core.base_repos import OrmEntityRepoInterface, OrmEntityRepository
-from core.exceptions import NotFoundError, DBError
+from core.exceptions import DBError, NotFoundError
 
 
 class ShoppingSessionRepoInterface(Protocol):

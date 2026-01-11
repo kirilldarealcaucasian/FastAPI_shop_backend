@@ -15,19 +15,6 @@ __all__ = (
     "CartItem",
 )
 
-from .models import (
-        Base,
-        User,
-        Book,
-        Order,
-        BookOrderAssoc,
-        Author,
-        Publisher,
-        Image,
-        Category,
-        ShoppingSession,
-        CartItem,
-        PaymentDetail,
-        BookCategoryAssoc,
-)
-
+from .models import (Author, Base, Book, BookCategoryAssoc, BookOrderAssoc,
+                     CartItem, Category, Image, Order, PaymentDetail,
+                     Publisher, ShoppingSession, User)

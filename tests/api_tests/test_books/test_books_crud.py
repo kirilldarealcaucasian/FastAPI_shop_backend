@@ -1,5 +1,6 @@
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
+
 from application.cmd import app
 from application.schemas import UpdateBookS
 
@@ -11,8 +12,7 @@ async def get_admin_header() -> str:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         response = await ac.post(url="v1/auth/login", json=data)
         access_token = response.json()['access_token']
-        admin_header = f"Bearer {access_token}"
-        return admin_header
+        return f"Bearer {access_token}"
 
 
 @pytest.mark.asyncio(scope="session")

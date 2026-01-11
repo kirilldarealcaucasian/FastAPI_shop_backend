@@ -1,19 +1,26 @@
-from uuid import UUID
+from decimal import Decimal
+
+from pydantic import BaseModel, Field
 
 from application.schemas.base_schemas import BookBaseS
-from pydantic import BaseModel, Field
 
 
 class BookIdS(BaseModel):
-    id: str | UUID
+    id: int
 
 
 class ReturnBookS(BookIdS, BookBaseS):
     isbn: str
-    genre_names: list[str]
+    name: str
+    categories: list[str]
     authors: list[str]
+    year_of_publication: int
+    language: str
+    country: str
+    publisher: str
     rating: float | None
-    discount: int
+    image: str
+    discount: Decimal
 
 
 class CreateBookS(BookBaseS):
@@ -24,8 +31,8 @@ class CreateBookS(BookBaseS):
 
 class UpdateBookS(BookBaseS):
     isbn: str = Field(min_length=1)
-    rating: float = Field(ge=0)
-    discount: int = Field(ge=0)
+    rating: float | None = Field(ge=0)
+    discount: Decimal = Field(ge=0)
 
 
 class UpdatePartiallyBookS(BaseModel):
@@ -42,9 +49,3 @@ class BookSummaryS(BaseModel):
     name: str
     count_ordered: int
     total_price: float
-
-
-
-
-
-

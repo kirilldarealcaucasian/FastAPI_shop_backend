@@ -1,106 +1,85 @@
+from typing import Protocol, Type
 from uuid import UUID
 
-from pydantic import UUID4
 from sqlalchemy import select
 from sqlalchemy.exc import CompileError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from typing import Union, Protocol
 
-
-from application.services.utils.filters import Pagination, BookFilter
+from application.models import Book
+from application.services.utils.filters import BookFilter, Pagination
 from core import OrmEntityRepository
 from core.base_repos import OrmEntityRepoInterface
-from application.models import Book
+from core.entity_base_service import Id
 from core.exceptions import FilterError
-from logger import logger
 
 
 class BookRepoInterface(Protocol):
     async def get_all_books(
-            self,
-            session: AsyncSession,
-            filters: BookFilter,
-            pagination: Pagination
-    ) -> list[Book]:
-        ...
+        self, session: AsyncSession, filters: BookFilter, pagination: Pagination
+    ) -> list[Book]: ...
 
-    async def get_by_id(
-            self,
-            session: AsyncSession,
-            id: UUID4
-    ) -> Book:
-        pass
+    async def get_by_id(self, session: AsyncSession, id: Id) -> Book: ...
 
 
-CombinedBookRepoInterface = Union[OrmEntityRepoInterface, BookRepoInterface]
+class CombinedBookRepoInterface(BookRepoInterface, OrmEntityRepoInterface, Protocol):
+    pass
 
 
-class BookRepository(OrmEntityRepository):
-    model: Book = Book
+class BookRepository(OrmEntityRepository[Book]):
+    @property
+    def model(self) -> Type[Book]:
+        return Book
 
     async def get_all_books(
-            self,
-            session: AsyncSession,
-            filters: BookFilter,
-            pagination: Pagination
+        self, session: AsyncSession, filters: BookFilter, pagination: Pagination
     ) -> list[Book]:
         stmt = select(self.model).options(
-            selectinload(Book.categories),
-            selectinload(Book.authors)
+            selectinload(Book.categories), selectinload(Book.authors)
         )
 
-        if pagination.limit > 1000:
-            stmt = select(self.model).options(
-                selectinload(Book.categories),
-                selectinload(Book.authors)
-            )
-
+        if pagination.limit > 200:
             stmt = filters.filter(stmt)
-            stmt = filters.sort(stmt).offset(
-                    pagination.page * pagination.limit
-                ).limit(pagination.limit)
-
+            stmt = (
+                filters.sort(stmt)
+                .offset(pagination.page * pagination.limit)
+                .limit(pagination.limit)
+            )
+            stmt = stmt.execution_options(
+                yield_per=pagination.limit // 10
+            )  # get only 10% of records at a time
             try:
-                result = await session.execute(stmt)
-            except CompileError:
-                raise FilterError()
-
+                result = await session.stream_scalars(stmt)
+            except CompileError as e:
+                raise FilterError() from e
             books: list[Book] = []
-
-            for chunk in result.yield_per(2):
-                books.append(chunk[0])
-
-            logger.debug("books: ", extra={"books": books})
+            async for book in result:
+                books.append(book)
             return books
 
         stmt = select(self.model).options(
-            selectinload(Book.categories),
-            selectinload(Book.authors)
+            selectinload(Book.categories), selectinload(Book.authors)
         )
 
         stmt = filters.filter(stmt)
-        stmt = filters.sort(stmt).offset(
-            pagination.page * pagination.limit
-        ).limit(pagination.limit)
+        stmt = (
+            filters.sort(stmt)
+            .offset(pagination.page * pagination.limit)
+            .limit(pagination.limit)
+        )
 
         try:
             books = list((await session.scalars(stmt)).all())
-        except CompileError:
-            raise FilterError()
+        except CompileError as e:
+            raise FilterError() from e
 
-        logger.debug("books: ", extra={"books": books})
         return books
 
-    async def get_by_id(
-            self,
-            session: AsyncSession,
-            id: UUID
-    ) -> Book:
-        stmt = select(self.model).options(
-            selectinload(Book.categories),
-            selectinload(Book.authors)
-        ).where(Book.id == str(id))
+    async def get_by_id(self, session: AsyncSession, id: UUID) -> Book | None:
+        stmt = (
+            select(self.model)
+            .options(selectinload(Book.categories), selectinload(Book.authors))
+            .where(Book.id == str(id))
+        )
 
         return (await session.execute(stmt)).scalar_one_or_none()
-

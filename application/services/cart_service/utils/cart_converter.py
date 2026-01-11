@@ -1,10 +1,9 @@
 import json
-from typing import Union
 
-from aioredis import Redis, DataError
+from aioredis import DataError, Redis
+from asyncpg.pgproto.pgproto import UUID as pgproto_UUID
 
 from application.schemas.order_schemas import AssocBookS
-from asyncpg.pgproto.pgproto import UUID as pgproto_UUID
 
 
 async def serialize_and_store_cart_books(book: AssocBookS, redis_con: Redis):
@@ -13,26 +12,21 @@ async def serialize_and_store_cart_books(book: AssocBookS, redis_con: Redis):
     for key, value in book_to_dict.items():
         # create hash for books metadata
         try:
-            await redis_con.hset(
-                name=f"book:{book.book_id}",
-                key=key,
-                value=value
-            )
+            await redis_con.hset(name=f"book:{book.book_id}", key=key, value=value)
         except DataError:
             # if any field is unserializable, we convert it to
             # its string representation
-            value_to_str = str(value) if type(value) == pgproto_UUID else json.dumps(value)
+            value_to_str = (
+                str(value) if type(value) is pgproto_UUID else json.dumps(value)
+            )
 
             await redis_con.hset(
-                name=f"book:{book.book_id}",
-                key=key,
-                value=value_to_str
+                name=f"book:{book.book_id}", key=key, value=value_to_str
             )
 
 
 def deserialize_cart(
-        book_metadata_keys: list[str],
-        book_metadata_values: list[str]
+    book_metadata_keys: list[str], book_metadata_values: list[str]
 ) -> AssocBookS:
     book_metadata = dict(zip(book_metadata_keys, book_metadata_values))
 
@@ -48,6 +42,5 @@ def deserialize_cart(
     return AssocBookS(
         **book_metadata,
         authors=authors_deserialized,
-        categories=categories_deserialized
-        )
-
+        categories=categories_deserialized,
+    )

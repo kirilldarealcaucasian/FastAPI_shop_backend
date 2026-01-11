@@ -1,6 +1,10 @@
+from typing import Type
+
+from application.models import Category
 from core import OrmEntityRepository
-from application.models import  Category
 
 
 class CategoryRepository(OrmEntityRepository):
-    model: Category = Category
+    @property
+    def model(self) -> Type[Category]:
+        return Category

@@ -4,19 +4,19 @@ from typing import Any
 from pydantic import BaseModel
 from sqlalchemy import Select, desc
 
-__all__ = ("BaseFilter", )
+__all__ = ("BaseFilter",)
 
+from loguru import logger
 from sqlalchemy.exc import CompileError, StatementError
 
-from core.exceptions import OrderingFilterError, FilterError
-from logger import logger
+from core.exceptions import FilterError, OrderingFilterError
 
 
 class BaseFilter(BaseModel):
     """
-        Filters are extracted from query parameters in pydantic schemas
-        (for each filter there is a schema).
-        This class is used to construct sql statements based on filtering data
+    Filters are extracted from query parameters in pydantic schemas
+    (for each filter there is a schema).
+    This class is used to construct sql statements based on filtering data
     """
 
     def get_filtering_data(self):
@@ -44,13 +44,15 @@ class BaseFilter(BaseModel):
                     raise FilterError
 
             if "__" in filter_name:
-                field_name, query_operator = filter_name.split("__")  # example name__ilike --> name, ilike
+                field_name, query_operator = filter_name.split(
+                    "__"
+                )  # example name__ilike --> name, ilike
                 try:
                     orm_operator, filter_value = getattr(
-                        self.FilterRules,
-                        query_operator,
-                        None
-                    )(filter_name_value)  # use a mapper to get an orm operator and a filter value
+                        self.FilterRules, query_operator, None
+                    )(
+                        filter_name_value
+                    )  # use a mapper to get an orm operator and a filter value
                     # to use it in the query
 
                     model_field = getattr(self.Meta.Model, field_name)
@@ -59,7 +61,7 @@ class BaseFilter(BaseModel):
                     extra = {
                         "field_name": field_name,
                         "query_operator": query_operator,
-                        "filter_name_value": filter_name_value
+                        "filter_name_value": filter_name_value,
                     }
                     logger.debug("filter error", extra=extra, exc_info=True)
                     raise FilterError
@@ -78,10 +80,12 @@ class BaseFilter(BaseModel):
             else:
                 directions["asc"].append(field)
         try:
-            stmt = stmt.order_by(
-                        *[desc(value) for value in directions["desc"]],  # apply order_by for "descending" fields
-                        *[value for value in directions["asc"]])
-            return stmt
+            return stmt.order_by(
+                *[
+                    desc(value) for value in directions["desc"]
+                ],  # apply order_by for "descending" fields
+                *list(directions["asc"]),
+            )
         except StatementError:
             logger.debug("incorrect order_by filter format", exc_info=True)
             raise OrderingFilterError
@@ -92,12 +96,11 @@ class BaseFilter(BaseModel):
 
     class FilterRules:
         """mapper from query params to SQLALCHEMY params for filtering"""
-        neq = lambda value: ("__ne__", value) # noqa
-        gt = lambda value: ("__gt__", value) # noqa
-        gte = lambda value: ("__ge__", value) # noqa
-        lt = lambda value: ("__lt__", value) # noqa
-        lte = lambda value: ("__le__", value) # noqa
-        ilike = lambda value: ("ilike", f"{value}%") # noqa
-        eq = lambda value: ("__eq__", value) # noqa
 
-
+        neq = lambda value: ("__ne__", value)  # noqa
+        gt = lambda value: ("__gt__", value)  # noqa
+        gte = lambda value: ("__ge__", value)  # noqa
+        lt = lambda value: ("__lt__", value)  # noqa
+        lte = lambda value: ("__le__", value)  # noqa
+        ilike = lambda value: ("ilike", f"{value}%")  # noqa
+        eq = lambda value: ("__eq__", value)  # noqa

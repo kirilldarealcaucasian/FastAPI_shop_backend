@@ -1,13 +1,12 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from application.schemas import ReturnImageS
-from infrastructure.postgres import db_client
 from application.services import ImageService
-
+from infrastructure.postgres import db_client
 
 router = APIRouter(prefix="/v1/images/books", tags=["Images"])
 

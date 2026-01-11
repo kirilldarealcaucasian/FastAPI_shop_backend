@@ -1,9 +1,8 @@
+from typing import Protocol
 from uuid import UUID
 
 from fastapi import UploadFile
-from typing import Protocol
 from sqlalchemy.ext.asyncio import AsyncSession
-
 
 __all__ = ("StorageServiceInterface",)
 

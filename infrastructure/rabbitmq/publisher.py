@@ -1,7 +1,6 @@
 from dataclasses import dataclass
-from logger import logger
-from infrastructure.rabbitmq.connector import RabbitConnector, rabbit_connector
 
+from infrastructure.rabbitmq.connector import RabbitConnector, rabbit_connector
 
 __all__ = ("rabbit_publisher", "RabbitPublisher")
 
@@ -11,22 +10,10 @@ class RabbitPublisher:
     # sets up interaction with RabbitMQ
     rabbit_connector: RabbitConnector
 
-    def send_message_basic_publish(self, message: bytes, routing_key: str):
-        try:
-            self.rabbit_connector.rabbit_chan.basic_publish(
-                exchange="",
-                routing_key=routing_key,
-                body=message,
-                mandatory=True
-            )
-        except Exception:
-            logger.error(
-                "Failed to publish a message",
-                extra=self.rabbit_connector.creds
-            )
-            return
+    def send_message_basic_publish(self, message: bytes, routing_key: str) -> None:
+        self.rabbit_connector.rabbit_chan.basic_publish(
+            exchange="", routing_key=routing_key, body=message, mandatory=True
+        )
 
 
-rabbit_publisher = RabbitPublisher(
-    rabbit_connector=rabbit_connector
-)
+rabbit_publisher = RabbitPublisher(rabbit_connector=rabbit_connector)

@@ -2,19 +2,16 @@ import os
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import UploadFile, Depends, HTTPException
+from fastapi import Depends, HTTPException, UploadFile
+from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.entity_base_service import EntityBaseService
 from application.repositories.book_repo import BookRepository
-from application.services.storage.internal_storage.image_manager import (
-    ImageManager,
-    ImageData,
-)
 from application.schemas import CreateImageS
-from core.exceptions import EntityDoesNotExist, DeletionError, ServerError
-
-from logger import logger
+from application.services.storage.internal_storage.image_manager import (
+    ImageData, ImageManager)
+from core.entity_base_service import EntityBaseService
+from core.exceptions import DeletionError, EntityDoesNotExist, ServerError
 
 
 class InternalStorageService(EntityBaseService):
@@ -22,21 +19,22 @@ class InternalStorageService(EntityBaseService):
     in the application/static/images folder"""
 
     def __init__(
-            self,
-            book_repo: Annotated[BookRepository, Depends(BookRepository)],
-            image_manager: Annotated[ImageManager, Depends(ImageManager)],
+        self,
+        book_repo: Annotated[BookRepository, Depends(BookRepository)],
+        image_manager: Annotated[ImageManager, Depends(ImageManager)],
     ):
         super().__init__(book_repo=book_repo)
         self._book_repo: BookRepository = book_repo
         self._image_manager: ImageManager = image_manager
 
     async def upload_image(
-            self,
-            instance_id: UUID,
-            image: UploadFile,
+        self,
+        instance_id: UUID,
+        image: UploadFile,
     ) -> CreateImageS:
         """Stores image in the project folder"""
         from application.tasks.tasks1 import upload_image
+
         res: ImageData = await self._image_manager(
             image=image, image_folder_name=str(instance_id)
         )
@@ -45,9 +43,7 @@ class InternalStorageService(EntityBaseService):
         image_name = res.get("image_name", None)
 
         if image_url is None or image_name is None:
-            raise HTTPException(
-                status_code=500, detail="Unable to upload the file"
-            )
+            raise HTTPException(status_code=500, detail="Unable to upload the file")
 
         try:
             image_bytes: bytes = await image.read()
@@ -80,25 +76,22 @@ class InternalStorageService(EntityBaseService):
                 extra,
                 exc_info=True,
             )
-            raise DeletionError(
-                entity="Image"
-            )
+            raise DeletionError(entity="Image")
 
     async def delete_instance_with_images(
-            self,
-            instance_id: str | UUID | int,
-            session: AsyncSession,
-            delete_images: bool = False,
+        self,
+        instance_id: str | UUID | int,
+        session: AsyncSession,
+        delete_images: bool = False,
     ) -> None:
         from application.tasks.tasks1 import delete_all_images
+
         logger.debug("in delete_instance_with_images")
         if delete_images:
             logger.debug("Deleting book with images")
             # if an instance has images, and we have to delete everything
             _ = super().delete(
-                    session=session,
-                    repo=self._book_repo,
-                    instance_id=instance_id
+                session=session, repo=self._book_repo, instance_id=instance_id
             )  # if no exceptions was raised
             await super().commit(session=session)
             logger.debug("Book instance has been successfully deleted from the db")
@@ -107,9 +100,7 @@ class InternalStorageService(EntityBaseService):
             # if we only need to delete instance from the db
             try:
                 await super().delete(
-                    repo=self._book_repo,
-                    session=session,
-                    instance_id=instance_id
+                    repo=self._book_repo, session=session, instance_id=instance_id
                 )
                 await super().commit(session=session)
             except EntityDoesNotExist:

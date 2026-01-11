@@ -3,21 +3,26 @@ from uuid import UUID
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.repositories.image_repo import ImageRepository
-from application.repositories.cart_repo import CartRepository
-from application.repositories.shopping_session_repo import ShoppingSessionRepository
-from application.repositories.user_repo import UserRepository
-from application.repositories.order_repo import OrderRepository
 from application.repositories.book_repo import BookRepository
-from application.repositories.cart_repo import CombinedCartRepositoryInterface
-from application.schemas import AddBookToCartS, ReturnCartS, ReturnBookS, DeleteBookFromCartS
+from application.repositories.cart_repo import (
+    CartRepository, CombinedCartRepositoryInterface)
+from application.repositories.image_repo import ImageRepository
+from application.repositories.order_repo import OrderRepository
+from application.repositories.shopping_session_repo import \
+    ShoppingSessionRepository
+from application.repositories.user_repo import UserRepository
+from application.schemas import (AddBookToCartS, DeleteBookFromCartS,
+                                 ReturnBookS, ReturnCartS)
 from application.schemas.order_schemas import AssocBookS
-from application.services import CartService, BookService, ShoppingSessionService, UserService
-from application.services.storage.internal_storage.image_manager import ImageManager
+from application.services import (BookService, CartService,
+                                  ShoppingSessionService, UserService)
+from application.services.storage.internal_storage.image_manager import \
+    ImageManager
+from application.services.storage.internal_storage.internal_storage_service import \
+    InternalStorageService
 from core.base_repos.unit_of_work import SqlAlchemyUnitOfWork
 from core.exceptions import BadRequest, EntityDoesNotExist
 from infrastructure.postgres.app import db_client
-from application.services.storage.internal_storage.internal_storage_service import InternalStorageService
 
 
 @pytest.mark.asyncio
@@ -50,7 +55,7 @@ async def cart_service(
         order_repo=order_repo
     )
 
-    service = CartService(
+    return CartService(
         cart_repo=cart_repo,
         book_repo=book_repo,
         uow=uow,
@@ -58,17 +63,15 @@ async def cart_service(
         shopping_session_service=shopping_session_service,
         user_service=user_service
     )
-    return service
 
 
 @pytest.mark.asyncio
 @pytest.fixture(scope="session")
 async def shopping_session_service() -> ShoppingSessionService:
     shopping_session_repo = ShoppingSessionRepository()
-    service = ShoppingSessionService(
+    return ShoppingSessionService(
         shopping_session_repo=shopping_session_repo
     )
-    return service
 
 
 @pytest.mark.asyncio

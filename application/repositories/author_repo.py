@@ -1,6 +1,10 @@
+from typing import Type
+
+from application.models import Author
 from core import OrmEntityRepository
 
 
-class AuthorRepository(OrmEntityRepository):
-    from application.models import Author
-    model: Author = Author
+class AuthorRepository(OrmEntityRepository[Author]):
+    @property
+    def model(self) -> Type[Author]:
+        return Author

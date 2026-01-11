@@ -1,6 +1,5 @@
 from fastapi import HTTPException, status
 
-
 __all__ = (
     "AlreadyExistsError",
     "RelatedEntityDoesNotExist",
@@ -13,15 +12,22 @@ __all__ = (
     "BadRequest",
     "OrderingFilterError",
     "DomainModelConversionError",
-    "NoCookieError"
+    "NoCookieError",
 )
 
 
 class AlreadyExistsError(HTTPException):
     def __init__(self, entity):
         super().__init__(
-            detail=f"{entity} already exists",
-            status_code=status.HTTP_409_CONFLICT
+            detail=f"{entity} already exists", status_code=status.HTTP_409_CONFLICT
+        )
+
+
+class ConflictErrorHTTP(HTTPException):
+    def __init__(self):
+        super().__init__(
+            detail="Failed to perform operation due to conflict",
+            status_code=status.HTTP_409_CONFLICT,
         )
 
 
@@ -35,14 +41,15 @@ class RelatedEntityDoesNotExist(HTTPException):
         else:
             super().__init__(
                 detail="Invalid ForeignKey reference",
-                status_code=status.HTTP_400_BAD_REQUEST)
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
 
 class InvalidModelCredentials(HTTPException):
     def __init__(self, message: str):
         super().__init__(
-            detail=message,
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+            detail=message, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
+        )
 
 
 class EntityDoesNotExist(HTTPException):
@@ -69,6 +76,14 @@ class UnauthorizedError(HTTPException):
         )
 
 
+class ForbiddenError(HTTPException):
+    def __init__(self):
+        super().__init__(
+            detail="forbidden",
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
+
+
 class NoCookieError(HTTPException):
     def __init__(self, detail: str = "No cookie required"):
         super().__init__(
@@ -76,7 +91,7 @@ class NoCookieError(HTTPException):
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
-        
+
 class RepositoryResolutionError(ValueError):
     def __init__(self):
         super().__init__("Unable to find desired repo in the repo_collector")
@@ -86,7 +101,7 @@ class FilterError(HTTPException):
     def __init__(self):
         super().__init__(
             detail="incorrect filter format / data",
-            status_code=status.HTTP_400_BAD_REQUEST
+            status_code=status.HTTP_400_BAD_REQUEST,
         )
 
 
@@ -94,21 +109,16 @@ class OrderingFilterError(HTTPException):
     def __init__(self):
         super().__init__(
             detail="incorrect format for order_by filter",
-            status_code=status.HTTP_400_BAD_REQUEST
+            status_code=status.HTTP_400_BAD_REQUEST,
         )
 
 
 class BadRequest(HTTPException):
     def __init__(self, detail: str):
-        super().__init__(
-            detail=detail,
-            status_code=status.HTTP_400_BAD_REQUEST
-        )
+        super().__init__(detail=detail, status_code=status.HTTP_400_BAD_REQUEST)
 
 
 class DomainModelConversionError(TypeError):
 
     def __str__(self):
         return "failed to convert data to domain model"
-
-

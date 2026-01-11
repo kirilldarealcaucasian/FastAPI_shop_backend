@@ -1,11 +1,11 @@
 from datetime import timedelta
 from typing import Literal
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from dotenv import load_dotenv
 
-__all__ = (
-    "settings",
-)
+from dotenv import load_dotenv
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+__all__ = ("settings",)
 
 load_dotenv()
 
@@ -18,6 +18,7 @@ class Settings(BaseSettings):
 
     DB_USER: str
     DB_PASSWORD: str
+    DB_SCHEMA: str | None = Field(default="public")
     DB_SERVER: str
     DB_PORT: int
     DB_NAME: str
@@ -49,19 +50,19 @@ class Settings(BaseSettings):
     YOOCASSA_SECRET_KEY: str
 
     @property
-    def SHOPPING_SESSION_EXPIRATION_TIMEDELTA(self) -> timedelta: # noqa
+    def SHOPPING_SESSION_EXPIRATION_TIMEDELTA(self) -> timedelta:  # noqa
         time_intervals = self.SHOPPING_SESSION_DURATION.split(":")
         # example: "1:0:0" -> 1 day 0 hours 0 minutes
         return timedelta(
             days=int(time_intervals[0]),
             hours=int(time_intervals[1]),
-            minutes=int(time_intervals[2])
+            minutes=int(time_intervals[2]),
         )
 
     model_config = SettingsConfigDict(env_file=".env")
 
     @property
-    def get_db_url(cls): # noqa
+    def get_db_url(cls):  # noqa
         if cls.MODE == "DEV":
             return f"postgresql+asyncpg://{cls.DB_USER}:{cls.DB_PASSWORD}@{cls.DB_SERVER}:{cls.DB_PORT}/{cls.DB_NAME}"
 
@@ -70,6 +71,7 @@ class Settings(BaseSettings):
 
         if cls.MODE == "LOCAL":
             return f"postgresql+asyncpg://{cls.LOCAL_POSTGRES_USER}:{cls.LOCAL_POSTGRES_PASSWORD}@{cls.LOCAL_POSTGRES_SERVER}:{cls.LOCAL_POSTGRES_PORT}/{cls.LOCAL_POSTGRES_DB}"
+        return None
 
 
 settings = Settings()

@@ -2,11 +2,11 @@ from typing import Protocol, Union
 from uuid import UUID
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from core import OrmEntityRepository
 from application.models.models import PaymentDetail
+from core import OrmEntityRepository
 from core.base_repos import OrmEntityRepoInterface
 from core.exceptions import DBError, NotFoundError
 

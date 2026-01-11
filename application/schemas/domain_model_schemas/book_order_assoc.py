@@ -2,10 +2,10 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from core.exceptions import AddBooksToCartError, DeleteBooksFromCartError
+
 from .book import BookS
 from .order import OrderS
-
-from core.exceptions import AddBooksToCartError, DeleteBooksFromCartError
 
 
 class BookOrderAssocS(BaseModel):

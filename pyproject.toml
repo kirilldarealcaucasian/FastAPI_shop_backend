@@ -4,9 +4,10 @@ version = "0.1.0"
 description = ""
 authors = ["kirill <Richi.mosberg@gmail.com>"]
 readme = "README.md"
+package-mode = false
 
 [tool.poetry.dependencies]
-python = ">=3.10"
+python = ">=3.10,<4.0"
 fastapi = {extras = ["all"], version = "^0.111.0"}
 alembic = "^1.13.1"
 email-validator = "^2.2.0"
@@ -36,8 +37,15 @@ dateparser = "^1.2.0"
 yookassa = "^3.3.0"
 var-dump = "^1.2"
 flower = "^2.0.1"
+loguru = "^0.7.3"
 
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "isort (>=7.0.0,<8.0.0)",
+    "pylint (>=3)",
+]

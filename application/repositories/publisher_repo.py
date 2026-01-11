@@ -1,5 +1,5 @@
-from core import OrmEntityRepository
 from application.models import Publisher
+from core import OrmEntityRepository
 
 
 class PublisherRepository(OrmEntityRepository):

@@ -1,30 +1,26 @@
 import asyncio
 from logging.config import fileConfig
 
+from dotenv import load_dotenv
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
+from application.models import Author  # noqa
+from application.models import Book  # noqa
+from application.models import BookCategoryAssoc  # noqa
+from application.models import BookOrderAssoc  # noqa
+from application.models import CartItem  # noqa
+from application.models import Category  # noqa
+from application.models import Image  # noqa
+from application.models import Order  # noqa
+from application.models import PaymentDetail  # noqa
+from application.models import Publisher  # noqa
+from application.models import ShoppingSession  # noqa
+from application.models import User  # noqa
+from application.models import Base
 from core.config import settings
-from application.models import (
-        Base,
-        User, # noqa
-        Order, # noqa
-        BookOrderAssoc, # noqa
-        Author, # noqa
-        Publisher, # noqa
-        Book, # noqa
-        Image, # noqa
-        ShoppingSession, # noqa
-        CartItem, # noqa
-        PaymentDetail, # noqa
-        CartItem, # noqa
-        BookCategoryAssoc, # noqa
-        Category # noqa
-)
-
-from dotenv import load_dotenv
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

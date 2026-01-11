@@ -1,10 +1,12 @@
+from datetime import datetime
+from decimal import Decimal
+from typing import TypeAlias
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
-from application.schemas.book_schemas import BookSummaryS
+
 from application.schemas.base_schemas import OrderBaseS
-from datetime import datetime
-from typing import TypeAlias
+from application.schemas.book_schemas import BookSummaryS
 
 Category: TypeAlias = str
 
@@ -34,14 +36,14 @@ class OrderSummaryS(BaseModel):
 
 
 class AssocBookS(BaseModel):
-    book_id: UUID
+    book_id: int
     book_title: str = Field(min_length=2)
     authors: list[str]
     categories: list[Category]
-    rating: int = Field(ge=0)
-    discount: int = Field(ge=0)
+    rating: float = Field(ge=0, default=0)
+    discount: Decimal = Field(ge=0)
     count_ordered: int
-    price_per_unit: float
+    price_per_unit: Decimal
 
 
 class ReturnOrderS(BaseModel):

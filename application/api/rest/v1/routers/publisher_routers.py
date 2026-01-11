@@ -1,16 +1,13 @@
 from datetime import timedelta
 
-from fastapi import Depends, status, APIRouter
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth.services.permission_service import PermissionService
-from infrastructure.postgres import db_client
-from core.utils.cache import cachify
-from application.schemas import (
-    CreatePublisherS,
-    ReturnPublisherS
-)
+from application.schemas import CreatePublisherS, ReturnPublisherS
 from application.services import PublisherService
+from auth.services.permission_service import PermissionService
+from core.utils.cache import cachify
+from infrastructure.postgres import db_client
 
 router = APIRouter(prefix="/v1/publishers", tags=["Publishers"])
 

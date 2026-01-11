@@ -1,5 +1,6 @@
 import pytest
 from httpx import AsyncClient
+
 from application.cmd import app
 from application.schemas import UpdatePartiallyOrderS
 

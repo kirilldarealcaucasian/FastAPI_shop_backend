@@ -5,5 +5,5 @@ __all__ = (
     "rabbit_connector",
 )
 
-from .publisher import rabbit_publisher, RabbitPublisher
-from .connector import rabbit_connector, RabbitConnector
+from .connector import RabbitConnector, rabbit_connector
+from .publisher import RabbitPublisher, rabbit_publisher

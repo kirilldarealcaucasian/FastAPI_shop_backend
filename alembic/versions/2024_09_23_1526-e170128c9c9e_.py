@@ -1,15 +1,15 @@
 """empty message
 
 Revision ID: e170128c9c9e
-Revises: 
+Revises:
 Create Date: 2024-09-23 15:26:41.890860
 
 """
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = 'e170128c9c9e'

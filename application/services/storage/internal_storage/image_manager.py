@@ -1,14 +1,12 @@
-import io
-
-from fastapi import HTTPException, status, UploadFile
 from datetime import datetime
-from core import ImageConfig
 from os import path
 from typing import TypedDict
-from PIL import Image
 
+from fastapi import HTTPException, UploadFile, status
+from loguru import logger
+
+from core import ImageConfig
 from core.exceptions import ServerError
-from logger import logger
 
 
 class ImageData(TypedDict):
@@ -34,11 +32,11 @@ class ImageManager:
                 detail="Not acceptable file format",
             )
 
-        elif not validators[1]:
+        if not validators[1]:
             raise HTTPException(
                 status_code=status.HTTP_406_NOT_ACCEPTABLE,
                 detail="File size is too big",
-                )
+            )
 
         return True if all(validators) else False
 
@@ -69,9 +67,7 @@ class ImageManager:
             image_name=image_identifier + f".{format}",
         )
 
-    async def __call__(
-        self, image: UploadFile, image_folder_name: str
-    ) -> ImageData:
+    async def __call__(self, image: UploadFile, image_folder_name: str) -> ImageData:
         fmt = image.content_type.split("/")[1]
 
         try:

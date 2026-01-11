@@ -24,6 +24,15 @@ class NotFoundError(Exception):
         return f"{self.entity} wasn't found"
 
 
+class ConflictError(Exception):
+    def __init__(self, entity, traceback: str | None = None):
+        self.entity = entity
+        self.traceback = traceback
+
+    def __str__(self):
+        return f"{self.entity} conflict: {self.traceback}"
+
+
 class DeletionError(Exception):
     def __init__(self, entity):
         self.entity = entity

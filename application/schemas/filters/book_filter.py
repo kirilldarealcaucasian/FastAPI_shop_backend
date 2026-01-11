@@ -1,9 +1,6 @@
 from pydantic import BaseModel, Field
 
-__all__ = (
-    "BookFilter"
-    "Pagination"
-)
+__all__ = "BookFilter" "Pagination"
 
 
 class BookFilterS(BaseModel):

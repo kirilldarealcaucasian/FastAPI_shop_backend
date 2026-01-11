@@ -1,8 +1,10 @@
 from datetime import date, datetime
-from pydantic import Field, EmailStr, model_validator
-from application.schemas.base_schemas import UserBaseS, BaseModel, Id
+
+from pydantic import EmailStr, Field, model_validator
+from typing_extensions import Literal, Self
+
+from application.schemas.base_schemas import BaseModel, Id, UserBaseS
 from application.schemas.order_schemas import ReturnOrderS
-from typing_extensions import Self, Literal
 
 
 class RegisterUserS(UserBaseS):

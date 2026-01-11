@@ -5,6 +5,6 @@ __all__ = (
 )
 
 
-from .categories_filter import CategoryFilter
 from .books_filter import BookFilter
+from .categories_filter import CategoryFilter
 from .pagination import Pagination

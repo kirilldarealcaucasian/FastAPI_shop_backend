@@ -1,16 +1,14 @@
 from datetime import timedelta
 
-from fastapi import Depends, status, APIRouter
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth.services.permission_service import PermissionService
-from infrastructure.postgres import db_client
-from core.utils.cache import cachify
-from application.schemas import (
-    ReturnCategoryS,
-    CreateCategoryS, UpdateCategoryS
-)
+from application.schemas import (CreateCategoryS, ReturnCategoryS,
+                                 UpdateCategoryS)
 from application.services import CategoryService
+from auth.services.permission_service import PermissionService
+from core.utils.cache import cachify
+from infrastructure.postgres import db_client
 
 router = APIRouter(prefix="/v1/categories", tags=["Categories"])
 

@@ -1,13 +1,12 @@
 from fastapi import APIRouter, Depends, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from application.schemas import (AuthenticatedUserS, LoginUserS, RegisterUserS,
+                                 ReturnUserS)
 from auth.schemas import AuthResponse
-
-from application.schemas import RegisterUserS, LoginUserS, ReturnUserS, AuthenticatedUserS
-from infrastructure.postgres import db_client
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from auth.services.auth_service import AuthService
-
+from infrastructure.postgres import db_client
 
 router = APIRouter(prefix="/v1/auth", tags=['Authentication and Authorization'])
 http_bearer = HTTPBearer()

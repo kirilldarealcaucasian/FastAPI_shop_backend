@@ -4,24 +4,30 @@ from uuid import UUID
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from application.repositories.book_order_assoc_repo import \
+    BookOrderAssocRepository
 from application.repositories.book_repo import BookRepository
-from application.repositories.image_repo import ImageRepository
 from application.repositories.cart_repo import CartRepository
-from application.repositories.shopping_session_repo import ShoppingSessionRepository
-from application.repositories.user_repo import UserRepository
+from application.repositories.image_repo import ImageRepository
 from application.repositories.order_repo import OrderRepository
-from application.repositories.payment_detail_repo import PaymentDetailRepository
-from application.repositories.book_order_assoc_repo import BookOrderAssocRepository
+from application.repositories.payment_detail_repo import \
+    PaymentDetailRepository
+from application.repositories.shopping_session_repo import \
+    ShoppingSessionRepository
+from application.repositories.user_repo import UserRepository
 from application.schemas import ReturnOrderS
-from application.schemas.domain_model_schemas import PaymentDetailS, OrderS
-from application.services import BookService, ShoppingSessionService, UserService, OrderService, CartService, \
-    PaymentService
-from application.services.storage.internal_storage.image_manager import ImageManager
+from application.schemas.domain_model_schemas import OrderS, PaymentDetailS
+from application.services import (BookService, CartService, OrderService,
+                                  PaymentService, ShoppingSessionService,
+                                  UserService)
+from application.services.storage.internal_storage.image_manager import \
+    ImageManager
+from application.services.storage.internal_storage.internal_storage_service import \
+    InternalStorageService
 from core.base_repos.unit_of_work import SqlAlchemyUnitOfWork
 from core.exceptions import PaymentFailedError
 from infrastructure.payment.yookassa.app import YooKassaPaymentProvider
 from infrastructure.postgres.app import db_client
-from application.services.storage.internal_storage.internal_storage_service import InternalStorageService
 
 
 @pytest.mark.asyncio
@@ -67,7 +73,7 @@ async def order_service(
         uow=uow
     )
 
-    service = OrderService(
+    return OrderService(
         order_repo=order_repo,
         book_repo=book_repo,
         book_order_assoc_repo=book_order_assoc_repo,
@@ -80,7 +86,6 @@ async def order_service(
         shopping_session_service=shopping_session_service,
         uow=uow,
     )
-    return service
 
 
 @pytest.mark.asyncio
@@ -91,14 +96,13 @@ async def payment_service(order_service: OrderService) -> PaymentService:
     cart_repo = CartRepository()
     payment_detail_repo = PaymentDetailRepository()
 
-    service = PaymentService(
+    return PaymentService(
         payment_provider=payment_provider,
         shopping_session_repo=shopping_session_repo,
         cart_repo=cart_repo,
         payment_detail_repo=payment_detail_repo
     )
 
-    return service
 
 
 @pytest.mark.asyncio

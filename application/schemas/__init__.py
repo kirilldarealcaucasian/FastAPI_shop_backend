@@ -57,77 +57,29 @@ __all__ = (
     "CartPrimaryIdentifier",
 )
 
-from .book_schemas import (
-    ReturnBookS,
-    CreateBookS,
-    UpdateBookS,
-    UpdatePartiallyBookS,
-    BookSummaryS,
-    BookIdS
-)
-
-from .order_schemas import (
-    CreateOrderS,
-    UpdateOrderS,
-    OrderSummaryS,
-    ReturnOrderS,
-    ReturnOrderIdS,
-    ShortenedReturnOrderS,
-    AddBookToOrderS,
-    UpdatePartiallyOrderS,
-    OrderItemS,
-    OrderIdS
-)
-
-from .user_schemas import (
-    RegisterUserS,
-    UpdatePartiallyUserS,
-    UpdateUserS,
-    ReturnUserS,
-    ReturnUserWithOrdersS,
-    LoginUserS,
-    AuthenticatedUserS
-)
-
-from .image_schemas import (ReturnImageS, CreateImageS)
-from .author_schemas import (
-    CreateAuthorS,
-    UpdateAuthorS,
-    UpdatePartiallyAuthorS,
-    ReturnAuthorS
-)
-
-from .publisher_schemas import (
-    CreatePublisherS,
-    UpdatePublisherS,
-    UpdatePartiallyPublisherS,
-    ReturnPublisherS,
-    PublisherId
-)
-
-from .category_schemas import (
-    ReturnCategoryS,
-    CreateCategoryS,
-    UpdateCategoryS,
-    CategoryId
-)
-
-from .shopping_session_schemas import (
-    CreateShoppingSessionS,
-    ReturnShoppingSessionS,
-    UpdatePartiallyShoppingSessionS,
-    ShoppingSessionIdS
-)
-
-from .cart_schemas import (
-    ReturnCartS,
-    AddBookToCartS,
-    CartSessionId,
-    DeleteBookFromCartS,
-    CartPrimaryIdentifier
-)
-
-from .filters import BookFilterS
-from .payment_schemas import CreatePaymentS, ReturnPaymentS
+from .author_schemas import (CreateAuthorS, ReturnAuthorS, UpdateAuthorS,
+                             UpdatePartiallyAuthorS)
 from .book_order_schemas import BookOrderPrimaryIdentifier
-
+from .book_schemas import (BookIdS, BookSummaryS, CreateBookS, ReturnBookS,
+                           UpdateBookS, UpdatePartiallyBookS)
+from .cart_schemas import (AddBookToCartS, CartPrimaryIdentifier,
+                           CartSessionId, DeleteBookFromCartS, ReturnCartS)
+from .category_schemas import (CategoryId, CreateCategoryS, ReturnCategoryS,
+                               UpdateCategoryS)
+from .filters import BookFilterS
+from .image_schemas import CreateImageS, ReturnImageS
+from .order_schemas import (AddBookToOrderS, CreateOrderS, OrderIdS,
+                            OrderItemS, OrderSummaryS, ReturnOrderIdS,
+                            ReturnOrderS, ShortenedReturnOrderS, UpdateOrderS,
+                            UpdatePartiallyOrderS)
+from .payment_schemas import CreatePaymentS, ReturnPaymentS
+from .publisher_schemas import (CreatePublisherS, PublisherId,
+                                ReturnPublisherS, UpdatePartiallyPublisherS,
+                                UpdatePublisherS)
+from .shopping_session_schemas import (CreateShoppingSessionS,
+                                       ReturnShoppingSessionS,
+                                       ShoppingSessionIdS,
+                                       UpdatePartiallyShoppingSessionS)
+from .user_schemas import (AuthenticatedUserS, LoginUserS, RegisterUserS,
+                           ReturnUserS, ReturnUserWithOrdersS,
+                           UpdatePartiallyUserS, UpdateUserS)

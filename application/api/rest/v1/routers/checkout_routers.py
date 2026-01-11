@@ -1,12 +1,11 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status, Cookie
+from fastapi import APIRouter, Cookie, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.services import PaymentService
 from auth.services.permission_service import PermissionService
 from infrastructure.postgres import db_client
-
 
 router = APIRouter(prefix="/v1/checkout", tags=["Checkout"])
 

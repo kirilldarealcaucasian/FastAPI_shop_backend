@@ -1,8 +1,11 @@
-import os
-from fastapi import HTTPException, status, File
-from collections import namedtuple
-from core.image_conf import ImageConfig
 import datetime
+import os
+from collections import namedtuple
+
+from fastapi import File, HTTPException, status
+from loguru import logger
+
+from core.image_conf import ImageConfig
 
 
 def get_image_format(image: File) -> str:
@@ -11,7 +14,8 @@ def get_image_format(image: File) -> str:
     if format not in ImageConfig.allowed_formats:
         raise HTTPException(
             status_code=status.HTTP_406_NOT_ACCEPTABLE,
-            detail="Not acceptable image format")
+            detail="Not acceptable image format",
+        )
     return format
 
 
@@ -26,11 +30,10 @@ def construct_url(format: str, name: str):
 
 
 def create_image_folder(concrete_image_folder_name: str) -> str:
-    from logger.logg import logger
     image_folder = os.path.join(
         ImageConfig.static_folder_path,
         ImageConfig.images_folder,
-        concrete_image_folder_name
+        concrete_image_folder_name,
     )
     try:
         os.mkdir(image_folder)
