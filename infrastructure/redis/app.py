@@ -1,7 +1,7 @@
 from aioredis import Redis, RedisError, from_url
 from loguru import logger
 
-from core.config import settings
+from ...application.settings import settings
 
 
 class RedisConnector:

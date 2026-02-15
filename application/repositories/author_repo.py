@@ -1,7 +1,7 @@
 from typing import Type
 
 from application.models import Author
-from core import OrmEntityRepository
+from .orm_entity_repo import OrmEntityRepository
 
 
 class AuthorRepository(OrmEntityRepository[Author]):

@@ -8,13 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
 from application.models import Book, CartItem, ShoppingSession
-from application.schemas import CartPrimaryIdentifier
-from core import OrmEntityRepository
-from core.base_repos import OrmEntityRepoInterface
-from core.entity_base_service import Id
-from core.exceptions import DBError, NotFoundError
-from core.exceptions.storage_exceptions import ConflictError
+from application.repositories.orm_entity_repo import (
+    OrmEntityRepoInterface,
+    OrmEntityRepository,
+)
+from application.exceptions import ConflictError, DBError, NotFoundError
 from infrastructure.postgres import db_client
+from ..types import Id, CartPrimaryIdentifier
 
 
 class CartRepositoryInterface(Protocol):

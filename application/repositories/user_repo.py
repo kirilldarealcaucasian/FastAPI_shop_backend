@@ -1,4 +1,4 @@
-from typing import Protocol
+from typing import Protocol, Type
 
 from sqlalchemy import and_, select
 from sqlalchemy.exc import SQLAlchemyError
@@ -6,13 +6,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from application.models import Book, BookOrderAssoc, Order, User
-from core import OrmEntityRepository
-from core.base_repos import OrmEntityRepoInterface
-from core.exceptions import DBError, NotFoundError
+from .orm_entity_repo import OrmEntityRepository
+from ..repositories.orm_entity_repo import OrmEntityRepoInterface
+from ..exceptions import DBError, NotFoundError
+from ..types import Id
 
 
 class UserInterface(Protocol):
-    async def get_by_id(self, session: AsyncSession, user_id: int) -> User: ...
+    async def get_by_id(self, session: AsyncSession, id: Id) -> User | None: ...
 
     async def get_user_by_order_id(
         self, session: AsyncSession, order_id: int
@@ -27,7 +28,9 @@ class CombinedUserInterface(UserInterface, OrmEntityRepoInterface, Protocol): ..
 
 
 class UserRepository(OrmEntityRepository):
-    model: type[User] = User
+    @property
+    def model(self) -> Type[User]:
+        return User
 
     async def get_by_id(self, session: AsyncSession, id: int) -> User:
         stmt = select(User).where(User.id == id)

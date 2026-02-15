@@ -1,5 +1,7 @@
 import time
-from typing import Union
+import sys
+import os
+from typing import Union, MutableMapping, Any, Mapping
 
 import uvicorn
 from aioredis import Redis
@@ -9,15 +11,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from loguru import logger
 
-from application.api.rest.v1 import (author_router, book_router, cart_router,
-                                     checkout_router, image_router,
-                                     order_router, publisher_router,
-                                     user_router)
+from .api.v1 import (
+    author_router,
+    book_router,
+    cart_router,
+    payment_router,
+    order_router,
+    user_router,
+)
 from auth.routers import auth_router
-from core.config import settings
+from .settings import settings
 from infrastructure.redis import redis_client
 
+
 app = FastAPI()
+app.mount("/api/v1", app)
 
 app.add_middleware(
     CORSMiddleware,  # noqa
@@ -27,19 +35,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 for router in (
     book_router,
     order_router,
     user_router,
-    image_router,
     auth_router,
-    publisher_router,
     author_router,
     cart_router,
-    checkout_router,
+    payment_router,
 ):
     app.include_router(router)
+
+
+def render_metadata(record: MutableMapping[str, Any]) -> None:
+    extra: Mapping[str, Any] = record.get("extra", {})
+    if extra:
+        record["kv"] = " ".join(f"{key}={value}" for key, value in extra.items())
+    else:
+        record["kv"] = ""
+
+
+logger.configure(
+    handlers=[
+        {
+            "sink": sys.stdout,
+            "level": os.getenv("log_level") or "INFO",
+            "format": '<level>{level}: msg="{message}" {kv}</level>',
+        }
+    ],
+    patcher=render_metadata,  # type: ignore
+)
 
 
 @app.middleware("http")

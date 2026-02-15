@@ -1,28 +1,26 @@
-from typing import Annotated
-
-from fastapi import Depends
 from loguru import logger
 from pydantic import PydanticSchemaGenerationError, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from application.repositories.author_repo import AuthorRepository
-from application.schemas import (CreateAuthorS, ReturnAuthorS, UpdateAuthorS,
-                                 UpdatePartiallyAuthorS)
-from application.schemas.domain_model_schemas import AuthorS
-from core import EntityBaseService
-from core.base_repos import OrmEntityRepoInterface
-from core.exceptions import DomainModelConversionError
+from ..schemas.domain_model_schemas import AuthorS
+from .entity_base_service import EntityBaseService
+from ..repositories.orm_entity_repo import OrmEntityRepoInterface
+from ..exceptions import DomainModelConversionError
+from ..schemas.response.author import GetAuthorResponse
+from ..schemas.request.author import (
+    CreateAuthorRequest,
+    UpdateAuthorRequest,
+    UpdatePartiallyAuthorRequest,
+)
 
 
 class AuthorService(EntityBaseService):
     def __init__(
         self,
-        author_repo: Annotated[OrmEntityRepoInterface, Depends(AuthorRepository)],
+        author_repo: OrmEntityRepoInterface,
     ):
-        super().__init__(auhor_repo=author_repo)
         self._author_repo = author_repo
 
-    async def get_all_authors(self, session: AsyncSession) -> list[ReturnAuthorS]:
+    async def get_all_authors(self, session: AsyncSession) -> list[GetAuthorResponse]:
         return await super().get_all(
             repo=self._author_repo,
             session=session,
@@ -30,10 +28,12 @@ class AuthorService(EntityBaseService):
 
     async def get_authors_by_filters(
         self, session: AsyncSession, **filters
-    ) -> list[ReturnAuthorS]:
+    ) -> list[GetAuthorResponse]:
         return await super().get_all(repo=self._author_repo, session=session, **filters)
 
-    async def create_author(self, session: AsyncSession, dto: CreateAuthorS) -> None:
+    async def create_author(
+        self, session: AsyncSession, dto: CreateAuthorRequest
+    ) -> None:
         data: dict = dto.model_dump(exclude_unset=True)
         try:
             domain_model = AuthorS(**data)
@@ -44,7 +44,7 @@ class AuthorService(EntityBaseService):
             raise DomainModelConversionError from e
 
         await super().create(
-            repo=self._author_repo, session=session, domain_model=domain_model
+            repo=self._author_repo, session=session, orm_model=domain_model
         )
         await super().commit(session=session)
 
@@ -58,7 +58,7 @@ class AuthorService(EntityBaseService):
         self,
         author_id: int,
         session: AsyncSession,
-        data: UpdateAuthorS | UpdatePartiallyAuthorS,
+        data: UpdatePartiallyAuthorRequest | UpdateAuthorRequest,
     ):
         dto: dict = data.model_dump(exclude_unset=True)
         try:

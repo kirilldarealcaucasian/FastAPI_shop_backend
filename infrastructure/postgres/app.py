@@ -7,13 +7,10 @@ from sqlalchemy.ext.asyncio import (AsyncSession, async_scoped_session,
 from typing_extensions import AsyncGenerator
 
 from core.config import settings
-
+from loguru import logger
 
 class PostgresClient:
-
     def __init__(self, url, echo: bool = False):
-        from loguru import logger
-
         try:
             self.engine = create_async_engine(url=url, echo=echo)
             logger.info(f"Successful db connection via: {url}")
@@ -46,5 +43,5 @@ class PostgresClient:
 
 # client to access db
 db_client = PostgresClient(
-    url=settings.get_db_url, echo=False  # display queries performed
+    url=settings.get_db_url, echo=False  
 )

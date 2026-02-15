@@ -1,4 +1,5 @@
 import asyncio
+from decimal import Decimal
 from typing import Annotated
 from uuid import UUID
 
@@ -6,21 +7,27 @@ from fastapi import Depends
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.models import (Book, CartItem, PaymentDetail, ShoppingSession,
-                                User)
+from application.models import Book, CartItem, PaymentDetail, ShoppingSession, User
 from application.repositories.cart_repo import (
-    CartRepository, CombinedCartRepositoryInterface)
+    CartRepository,
+    CombinedCartRepositoryInterface,
+)
 from application.repositories.payment_detail_repo import (
-    CombinedPaymentDetailRepoInterface, PaymentDetailRepository)
+    CombinedPaymentDetailRepoInterface,
+    PaymentDetailRepository,
+)
 from application.repositories.shopping_session_repo import (
-    CombinedShoppingSessionRepositoryInterface, ShoppingSessionRepository)
+    CombinedShoppingSessionRepositoryInterface,
+    ShoppingSessionRepository,
+)
 from application.schemas import CreatePaymentS, OrderItemS, ReturnPaymentS
 from application.schemas.domain_model_schemas import PaymentDetailS
-from core import EntityBaseService
-from core.exceptions import (EntityDoesNotExist, PaymentObjectCreationError,
-                             ServerError)
-from infrastructure.payment.yookassa.app import (PaymentProviderInterface,
-                                                 YooKassaPaymentProvider)
+from .entity_base_service import EntityBaseService
+from ..exceptions import EntityDoesNotExist, PaymentObjectCreationError, ServerError
+from infrastructure.payment.yookassa.app import (
+    PaymentProviderInterface,
+    YooKassaPaymentProvider,
+)
 
 ConfirmationURL = TypeAlias = str
 
@@ -41,11 +48,6 @@ class PaymentService(EntityBaseService):
             CombinedPaymentDetailRepoInterface, Depends(PaymentDetailRepository)
         ],
     ):
-        super().__init__(
-            shopping_session_repo=shopping_session_repo,
-            cart_repo=cart_repo,
-            payment_detail_repo=payment_detail_repo,
-        )
         self._payment_provider: PaymentProviderInterface = payment_provider
         self._shopping_session_repo: CombinedShoppingSessionRepositoryInterface = (
             shopping_session_repo
@@ -74,9 +76,14 @@ class PaymentService(EntityBaseService):
         payment url and starts polling
         asynchronously for payment status in the background
         """
-        shopping_session: ShoppingSession = await self._shopping_session_repo.get_by_id(
-            session=session, id=shopping_session_id
+        shopping_session: ShoppingSession | None = (
+            await self._shopping_session_repo.get_by_id(
+                session=session, id=shopping_session_id
+            )
         )
+
+        if not shopping_session:
+            raise EntityDoesNotExist(entity="ShoppingSession")
 
         cart: list[CartItem] = await self._cart_repo.get_cart_by_session_id(
             session=session, cart_session_id=shopping_session_id
@@ -139,7 +146,7 @@ class PaymentService(EntityBaseService):
         )
 
         _ = await super().create(
-            repo=self._payment_detail_repo, session=session, domain_model=domain_model
+            repo=self._payment_detail_repo, session=session, orm_model=domain_model
         )  # create PaymentDetail, if sth is wrong http_exception is raised
 
         logger.debug("Starting to check payment status . . .")

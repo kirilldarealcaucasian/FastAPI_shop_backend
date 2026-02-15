@@ -3,17 +3,38 @@
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import (BIGINT, DECIMAL, UUID, CheckConstraint, Column,
-                        Computed, Date, DateTime, Double, ForeignKey, Index,
-                        Integer, MetaData, PrimaryKeyConstraint, String, Table,
-                        UniqueConstraint, text)
-from sqlalchemy.orm import (DeclarativeBase, Mapped, declared_attr,
-                            mapped_column, relationship)
+from sqlalchemy import (
+    BIGINT,
+    DECIMAL,
+    CheckConstraint,
+    UUID as sqlalc_UUID,
+    Column,
+    Computed,
+    Date,
+    DateTime,
+    Double,
+    ForeignKey,
+    Index,
+    Integer,
+    MetaData,
+    PrimaryKeyConstraint,
+    String,
+    Table,
+    UniqueConstraint,
+    text,
+)
+from uuid import UUID
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    declared_attr,
+    mapped_column,
+    relationship,
+)
 from typing_extensions import Literal
 
-from application.models.mixins import (FirstLastNameValidationMixin,
-                                       TimestampMixin)
-from core.config.conf import settings
+from application.models.mixins import FirstLastNameValidationMixin, TimestampMixin
+from ..settings import settings
 
 __all__ = (
     "Base",
@@ -61,7 +82,7 @@ class Base(BaseWithoutId):
 BookCategoryAssoc = Table(
     "book_category_assoc",
     Base.metadata,
-    Column("book_id", UUID, ForeignKey("books.id"), primary_key=True),
+    Column("book_id", sqlalc_UUID, ForeignKey("books.id"), primary_key=True),
     Column("category_id", Integer, ForeignKey("categories.id"), primary_key=True),
 )  # secondary table
 
@@ -155,8 +176,8 @@ class User(Base, FirstLastNameValidationMixin, TimestampMixin):
     gender: Mapped[Gender] = mapped_column(String)
     email: Mapped[str] = mapped_column(String, unique=True)
     hashed_password: Mapped[str]
-    role_name: Mapped[str | None] = mapped_column(default="user", server_default="user")
-    date_of_birth: Mapped[date | None] = mapped_column(Date, server_default=None)
+    role_name: Mapped[str] = mapped_column(default="user", server_default="user")
+    date_of_birth: Mapped[date] = mapped_column(Date, server_default=None)
 
     # relationship
     orders: Mapped[list["Order"] | None] = relationship(
@@ -298,7 +319,7 @@ class ShoppingSession(DeclarativeBase, TimestampMixin):
     user_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), unique=True
     )
-    total: Mapped[float | None] = mapped_column(server_default="0", default=0)
+    total: Mapped[Decimal] = mapped_column(server_default="0", default=0)
     expiration_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.now() + timedelta(days=1)
     )
@@ -329,7 +350,7 @@ class CartItem(BaseWithoutId, TimestampMixin):
         ),
         primary_key=True,
     )
-    book_id: Mapped[UUID] = mapped_column(
+    book_id: Mapped[int] = mapped_column(
         ForeignKey(
             "books.id",
             ondelete="RESTRICT",

@@ -1,38 +1,30 @@
-from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends
 from loguru import logger
 from pydantic import PydanticSchemaGenerationError, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.models import Book
-from application.repositories.book_repo import BookRepository
-from application.repositories.image_repo import ImageRepository
-from application.schemas import (BookIdS, ReturnBookS, ReturnImageS,
-                                 UpdateBookS, UpdatePartiallyBookS)
-from application.schemas.book_schemas import CreateBookS
-from application.schemas.domain_model_schemas import BookS
-from application.services.storage import (InternalStorageService,
-                                          StorageServiceInterface)
-from application.services.utils.filters import BookFilter, Pagination
-from core import EntityBaseService
-from core.base_repos import OrmEntityRepoInterface
-from core.exceptions import DomainModelConversionError, EntityDoesNotExist
+from ..models import Book
+from ..schemas import (
+    BookIdS,
+    ReturnBookS,
+    UpdateBookS,
+    UpdatePartiallyBookS,
+)
+from ..schemas.book_schemas import CreateBookS
+from ..schemas.domain_model_schemas import BookS
+from ..services.utils.filters import BookFilter, Pagination
+from .entity_base_service import EntityBaseService
+from ..repositories.book_repo import CombinedBookRepoInterface
+from ..exceptions import DomainModelConversionError
 
 
 class BookService(EntityBaseService):
-    from application.repositories.book_repo import CombinedBookRepoInterface
-
     def __init__(
         self,
-        storage: Annotated[StorageServiceInterface, Depends(InternalStorageService)],
-        book_repo: Annotated[CombinedBookRepoInterface, Depends(BookRepository)],
-        image_repo: Annotated[OrmEntityRepoInterface, Depends(ImageRepository)],
+        book_repo: CombinedBookRepoInterface,
     ):
         self._book_repo = book_repo
-        self._image_repo = image_repo
-        self._storage: StorageServiceInterface = storage
 
     async def get_book_by_id(self, session: AsyncSession, id: UUID) -> ReturnBookS:
         book: Book = await super().get_by_id(
@@ -112,17 +104,11 @@ class BookService(EntityBaseService):
         session: AsyncSession,
         book_id: str,
     ) -> None:
-        try:
-            _: list[ReturnImageS] = await super().get_all(
-                repo=self._image_repo, session=session, book_id=book_id
-            )
-        except EntityDoesNotExist:
-            return await self._storage.delete_instance_with_images(
-                delete_images=False, instance_id=book_id, session=session
-            )
-        return await self._storage.delete_instance_with_images(
-            delete_images=True, instance_id=book_id, session=session
-        )
+        # TODO: later later
+        # return await self._storage.delete_instance_with_images(
+        #     delete_images=True, instance_id=book_id, session=session
+        # )
+        pass
 
     async def update_book(
         self,

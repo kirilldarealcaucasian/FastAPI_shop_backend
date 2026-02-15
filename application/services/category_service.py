@@ -19,7 +19,6 @@ class CategoryService(EntityBaseService):
         self,
         category_repo: Annotated[OrmEntityRepoInterface, Depends(CategoryRepository)],
     ):
-        super().__init__(category_repo=category_repo)
         self._category_repo = category_repo
 
     async def get_all_categories(self, session: AsyncSession) -> list[ReturnCategoryS]:
@@ -70,9 +69,9 @@ class CategoryService(EntityBaseService):
     async def update_category(
         self, session: AsyncSession, instance_id: int | str, dto: UpdateCategoryS
     ):
-        dto: dict = dto.model_dump(exclude_unset=True)
+        data: dict = dto.model_dump(exclude_unset=True)
         try:
-            domain_model = CategoryS(**dto)
+            domain_model = CategoryS(**data)
         except (ValidationError, PydanticSchemaGenerationError):
             logger.error(
                 "Failed to generate domain model", extra={"dto": dto}, exc_info=True

@@ -22,8 +22,3 @@ class CartSessionId(BaseModel):
 class DeleteBookFromCartS(BaseModel):
     book_id: int
     quantity: int = Field(default=1, ge=1)
-
-
-class CartPrimaryIdentifier(BaseModel):
-    book_id: int
-    session_id: UUID

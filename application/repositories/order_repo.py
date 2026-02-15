@@ -10,6 +10,7 @@ from application.models import Book, BookOrderAssoc, Order, User
 from application.services.utils.filters import Pagination
 from core import OrmEntityRepository
 from core.base_repos import OrmEntityRepoInterface
+from core.entity_base_service import Id
 from core.exceptions import DBError, NotFoundError
 
 __all__ = (
@@ -32,7 +33,7 @@ class OrderRepositoryInterface(Protocol):
     ) -> Order: ...
 
     async def get_by_id(
-        self, session: AsyncSession, id: int
+        self, session: AsyncSession, id: Id
     ) -> list[BookOrderAssoc]: ...
 
     async def get_order_summary(
@@ -64,7 +65,9 @@ books_data: TypeAlias = str
 
 
 class OrderRepository(OrmEntityRepository):
-    model: Type[Order] = Order
+    @property
+    def model(self) -> Type[Order]:
+        return Order
 
     async def get_all_orders(
         self, session: AsyncSession, pagination: Pagination

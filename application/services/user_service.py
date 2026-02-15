@@ -5,21 +5,30 @@ from loguru import logger
 from pydantic import PydanticSchemaGenerationError, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.models import BookOrderAssoc, Order, User
-from application.repositories.order_repo import (
-    CombinedOrderRepositoryInterface, OrderRepository)
-from application.repositories.user_repo import (CombinedUserInterface,
-                                                UserRepository)
-from application.schemas import (ReturnOrderS, ReturnUserS,
-                                 ReturnUserWithOrdersS, UpdatePartiallyUserS,
-                                 UpdateUserS)
-from application.schemas.domain_model_schemas import UserS
-from application.schemas.filters import PaginationS
-from application.schemas.order_schemas import AssocBookS
-from application.services.order_service.utils import order_assembler
-from core.entity_base_service import EntityBaseService
-from core.exceptions import (EntityDoesNotExist, InvalidModelCredentials,
-                             NotFoundError, ServerError)
+from ..models import BookOrderAssoc, Order, User
+from ..repositories.order_repo import (
+    CombinedOrderRepositoryInterface,
+    OrderRepository,
+)
+from ..repositories.user_repo import CombinedUserInterface, UserRepository
+from ..schemas import (
+    ReturnOrderS,
+    ReturnUserS,
+    ReturnUserWithOrdersS,
+    UpdatePartiallyUserS,
+    UpdateUserS,
+)
+from ..schemas.domain_model_schemas import UserS
+from ..schemas.filters import PaginationS
+from ..schemas.order_schemas import AssocBookS
+from ..services.order_service.utils import order_assembler
+from .entity_base_service import EntityBaseService
+from ..exceptions import (
+    EntityDoesNotExist,
+    InvalidModelCredentials,
+    NotFoundError,
+    ServerError,
+)
 
 
 class UserService(EntityBaseService):
@@ -30,7 +39,6 @@ class UserService(EntityBaseService):
             CombinedOrderRepositoryInterface, Depends(OrderRepository)
         ],
     ):
-        super().__init__(user_repo=user_repo, order_repo=order_repo)
         self._user_repo: CombinedUserInterface = user_repo
         self._order_repo: CombinedOrderRepositoryInterface = order_repo
 
@@ -130,12 +138,12 @@ class UserService(EntityBaseService):
         user_id: str | int,
         dto: UpdateUserS | UpdatePartiallyUserS,
     ) -> None:
-        dto: dict = dto.model_dump(exclude_unset=True, exclude_none=True)
+        data: dict = dto.model_dump(exclude_unset=True, exclude_none=True)
         if not dto:
             raise InvalidModelCredentials(message="invalid data")
 
         try:
-            domain_model = UserS(**dto)
+            domain_model = UserS(**data)
         except (ValidationError, PydanticSchemaGenerationError):
             logger.error(
                 "Failed to generate domain model", extra={"dto": dto}, exc_info=True

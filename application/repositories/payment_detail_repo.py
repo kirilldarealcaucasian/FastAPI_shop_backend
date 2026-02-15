@@ -1,4 +1,4 @@
-from typing import Protocol, Union
+from typing import Protocol, Type, Union
 from uuid import UUID
 
 from sqlalchemy import select
@@ -26,7 +26,9 @@ CombinedPaymentDetailRepoInterface = Union[
 
 
 class PaymentDetailRepository(OrmEntityRepository):
-    model: PaymentDetail = PaymentDetail
+    @property
+    def model(self) -> Type[PaymentDetail]:
+        return PaymentDetail
 
     async def get_by_id(
             self,

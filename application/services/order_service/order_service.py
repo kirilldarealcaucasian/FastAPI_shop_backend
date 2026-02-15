@@ -70,12 +70,6 @@ class OrderService(EntityBaseService):
         ],
         uow: Annotated[AbstractUnitOfWork, Depends(SqlAlchemyUnitOfWork)],
     ):
-        super().__init__(
-            payment_detail_repo=payment_detail_repo,
-            shopping_session_repo=shopping_session_repo,
-            order_repo=order_repo,
-            book_order_assoc_repo=book_order_assoc_repo,
-        )
         self._order_repo = order_repo
         self._book_repo = book_repo
         self._user_service = user_service

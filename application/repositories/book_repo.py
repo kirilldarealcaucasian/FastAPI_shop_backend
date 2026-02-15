@@ -8,10 +8,9 @@ from sqlalchemy.orm import selectinload
 
 from application.models import Book
 from application.services.utils.filters import BookFilter, Pagination
-from core import OrmEntityRepository
-from core.base_repos import OrmEntityRepoInterface
-from core.entity_base_service import Id
-from core.exceptions import FilterError
+from .orm_entity_repo import OrmEntityRepoInterface, OrmEntityRepository
+from ..types import Id
+from ..exceptions import FilterError
 
 
 class BookRepoInterface(Protocol):
