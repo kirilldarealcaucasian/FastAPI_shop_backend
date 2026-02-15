@@ -1,4 +1,5 @@
 import json
+from collections.abc import Sequence
 from datetime import timedelta
 from functools import wraps
 from typing import Callable, Union
@@ -19,7 +20,7 @@ def cachify(instance_return_schema, cache_time: timedelta | int) -> Callable:
 
     def decorator(func: Callable):
         @wraps(func)
-        async def wrapper(*args, **kwargs) -> list[instance_return_schema]:
+        async def wrapper(*args, **kwargs) -> Sequence[instance_return_schema]:
             redis: Redis = await redis_client.connect()
 
             if not redis:

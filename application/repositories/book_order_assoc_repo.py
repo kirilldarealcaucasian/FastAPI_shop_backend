@@ -5,18 +5,16 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from application.models import BookOrderAssoc
-from application.schemas import BookOrderPrimaryIdentifier
-from application.schemas.domain_model_schemas import BookOrderAssocS
-from core import OrmEntityRepository
-from core.base_repos import OrmEntityRepoInterface
-from core.entity_base_service import Id
-from core.exceptions.storage_exceptions import DBError, DuplicateError
+from ..models import BookOrderAssoc
+from ..types import BookOrderPrimaryIdentifier
+from .orm_entity_repo import OrmEntityRepoInterface, OrmEntityRepository
+from ..types import Id
+from ..exceptions.storage_exceptions import DBError, DuplicateError
 
 
 class BookOrderAssocRepoInterface(Protocol):
     async def create_many(
-        self, session: AsyncSession, domain_models: list[BookOrderAssocS]
+        self, session: AsyncSession, orm_models: list[BookOrderAssoc]
     ) -> None: ...
 
     async def get_by_id(
@@ -36,15 +34,10 @@ class BookOrderAssocRepository(OrmEntityRepository[BookOrderAssoc]):
         return BookOrderAssoc
 
     async def create_many(
-        self, session: AsyncSession, domain_models: list[BookOrderAssocS]
+        self, session: AsyncSession, orm_models: list[BookOrderAssoc]
     ) -> None:
-        to_add: list[BookOrderAssoc] = [
-            BookOrderAssoc(**obj.model_dump(exclude_unset=True, exclude_none=True))
-            for obj in domain_models
-        ]
-
         try:
-            session.add_all(to_add)
+            session.add_all(orm_models)
             await session.commit()
         except IntegrityError as e:
             raise DuplicateError(entity=self.model.__name__, traceback=str(e)) from e

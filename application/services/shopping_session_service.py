@@ -1,57 +1,41 @@
 from datetime import datetime
-from typing import Annotated
 from uuid import UUID
-
-from fastapi import Depends
 from loguru import logger
-from pydantic import PydanticSchemaGenerationError, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.models import ShoppingSession
-from application.repositories.shopping_session_repo import (
+from ..models import ShoppingSession
+from ..repositories.shopping_session_repo import (
     CombinedShoppingSessionRepositoryInterface,
-    ShoppingSessionRepository,
 )
-from application.schemas import (
-    CreateShoppingSessionS,
-    ReturnShoppingSessionS,
-    UpdatePartiallyShoppingSessionS,
+from ..schemas.request.shopping_session import (
+    CreateShoppingSessionRequest,
+    UpdatePartiallyShoppingSessionRequest,
 )
-from ..schemas.domain_model_schemas import ShoppingSessionS
+from ..schemas.response.shopping_session import GetShoppingSessionResponse
 from ..types import Id
 from .entity_base_service import EntityBaseService
 from ..settings import settings
 from ..exceptions import (
-    DBError,
-    DomainModelConversionError,
     EntityDoesNotExist,
     NotFoundError,
-    ServerError,
 )
+from dataclasses import dataclass
 
 
+@dataclass(slots=True, frozen=True)
 class ShoppingSessionService(EntityBaseService):
-    def __init__(
-        self,
-        shopping_session_repo: Annotated[
-            CombinedShoppingSessionRepositoryInterface,
-            Depends(ShoppingSessionRepository),
-        ],
-    ):
-        self._shopping_session_repo: CombinedShoppingSessionRepositoryInterface = (
-            shopping_session_repo
-        )
+    shopping_session_repo: CombinedShoppingSessionRepositoryInterface
 
     async def get_shopping_session_by_id(
         self, session: AsyncSession, id: Id
-    ) -> ReturnShoppingSessionS:
+    ) -> GetShoppingSessionResponse:
         shopping_session: ShoppingSession = await super().get_by_id(
-            session=session, repo=self._shopping_session_repo, id=id
+            session=session, repo=self.shopping_session_repo, id=id
         )
         logger.debug(
             "ShoppingSession: ", extra={"shopping_session: ": shopping_session}
         )
-        return ReturnShoppingSessionS(
+        return GetShoppingSessionResponse(
             id=shopping_session.id,
             user_id=shopping_session.user_id,
             total=shopping_session.total,
@@ -62,29 +46,23 @@ class ShoppingSessionService(EntityBaseService):
         self, session: AsyncSession, id: UUID
     ) -> ShoppingSession:
         try:
-            return await self._shopping_session_repo.get_shopping_session_with_details(
+            return await self.shopping_session_repo.get_shopping_session_with_details(
                 session=session, id=id
             )
         except NotFoundError:
             raise EntityDoesNotExist("Cart not found")
 
     async def create_shopping_session(
-        self, session: AsyncSession, dto: CreateShoppingSessionS
+        self, session: AsyncSession, dto: CreateShoppingSessionRequest
     ) -> Id:
         data: dict = dto.model_dump(exclude_unset=True, exclude_none=True)
-
-        try:
-            domain_model = ShoppingSessionS(**data)
-            domain_model.expiration_time = (
-                datetime.now() + settings.SHOPPING_SESSION_EXPIRATION_TIMEDELTA
-            )
-        except (ValidationError, PydanticSchemaGenerationError):
-            extra = {"dto": dto}
-            logger.error("failed to convert to domain model", extra, exc_info=True)
-            raise DomainModelConversionError
+        data["expiration_time"] = (
+            datetime.now() + settings.SHOPPING_SESSION_EXPIRATION_TIMEDELTA
+        )
+        orm_model = ShoppingSession(**data)
 
         session_id = await super().create(
-            session=session, repo=self._shopping_session_repo, domain_model=domain_model
+            session=session, repo=self.shopping_session_repo, orm_model=orm_model
         )
 
         await super().commit(session=session)
@@ -92,20 +70,16 @@ class ShoppingSessionService(EntityBaseService):
         return session_id
 
     async def update_shopping_session(
-        self, session: AsyncSession, id: UUID, dto: UpdatePartiallyShoppingSessionS
-    ) -> ReturnShoppingSessionS:
+        self,
+        session: AsyncSession,
+        id: UUID,
+        dto: UpdatePartiallyShoppingSessionRequest,
+    ) -> GetShoppingSessionResponse:
         data: dict = dto.model_dump(exclude_unset=True)
-
-        try:
-            domain_model = ShoppingSessionS(**data)
-        except (ValidationError, PydanticSchemaGenerationError):
-            extra = {"dto": dto}
-            logger.error("failed to convert to domain model", extra, exc_info=True)
-            raise DomainModelConversionError
 
         return await super().update(
             session=session,
-            repo=self._shopping_session_repo,
+            repo=self.shopping_session_repo,
             instance_id=id,
-            domain_model=domain_model,
+            orm_model=data,
         )

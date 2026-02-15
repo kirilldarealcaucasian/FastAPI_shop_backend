@@ -6,7 +6,6 @@ __all__ = (
     "ServerError",
     "EntityDoesNotExist",
     "UnauthorizedError",
-    "RepositoryResolutionError",
     "InvalidModelCredentials",
     "FilterError",
     "BadRequest",
@@ -90,11 +89,6 @@ class NoCookieError(HTTPException):
             detail=detail,
             status_code=status.HTTP_400_BAD_REQUEST,
         )
-
-
-class RepositoryResolutionError(ValueError):
-    def __init__(self):
-        super().__init__("Unable to find desired repo in the repo_collector")
 
 
 class FilterError(HTTPException):

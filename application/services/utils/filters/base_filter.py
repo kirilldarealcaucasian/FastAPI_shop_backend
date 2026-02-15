@@ -9,7 +9,8 @@ __all__ = ("BaseFilter",)
 from loguru import logger
 from sqlalchemy.exc import CompileError, StatementError
 
-from core.exceptions import FilterError, OrderingFilterError
+from ....exceptions import FilterError, OrderingFilterError
+from collections.abc import ItemsView
 
 
 class BaseFilter(BaseModel):
@@ -19,7 +20,7 @@ class BaseFilter(BaseModel):
     This class is used to construct sql statements based on filtering data
     """
 
-    def get_filtering_data(self):
+    def get_filtering_data(self) -> ItemsView[str, Any]:
         """parses filter schema into key, value pairs"""
         filtering_fields: dict = self.model_dump(
             exclude_none=True,
@@ -38,8 +39,8 @@ class BaseFilter(BaseModel):
             if isinstance(filter, BaseFilter):
                 # case for a nested filter
                 try:
-                    stmt = getattr(self, filter_name, None).filter(stmt)
-                except Exception:
+                    stmt = getattr(self, filter_name).filter(stmt)
+                except AttributeError:
                     logger.debug("filter error", exc_info=True)
                     raise FilterError
 
@@ -49,7 +50,7 @@ class BaseFilter(BaseModel):
                 )  # example name__ilike --> name, ilike
                 try:
                     orm_operator, filter_value = getattr(
-                        self.FilterRules, query_operator, None
+                        self.FilterRules, query_operator
                     )(
                         filter_name_value
                     )  # use a mapper to get an orm operator and a filter value
@@ -69,10 +70,10 @@ class BaseFilter(BaseModel):
 
     def sort(self, stmt: Select) -> Select:
         """constructs sql statement, applying sorting to it"""
-        if not self.order_by:
+        if not getattr(self, "order_by", None):
             return stmt
 
-        fields: list = self.order_by.split(",")
+        fields: list = getattr(self, "order_by").order_by.split(",")
         directions: dict[str, list[str]] = defaultdict(list)
         for field in fields:
             if "-" in field:

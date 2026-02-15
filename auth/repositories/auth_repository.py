@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import TypeVar
 
 from loguru import logger
@@ -6,9 +7,9 @@ from sqlalchemy.exc import DBAPIError, NoSuchTableError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.models import User
-from application.schemas import ReturnUserS
-from auth import helpers
-from auth.schemas.token_schema import TokenPayload
+from application.schemas.response.user import GetUserResponse
+from .. import helpers
+from ..schemas.token_schema import TokenPayload
 from core.exceptions import (DBError, DuplicateError, NotFoundError,
                              ServerError, UnauthorizedError)
 
@@ -43,7 +44,7 @@ class AuthRepository:
 
         return user
 
-    async def create_user(self, data: dict, session: AsyncSession) -> ReturnUserS:
+    async def create_user(self, data: dict, session: AsyncSession) -> GetUserResponse:
         user_exists: User | None = await self.retrieve_user_by_email(
             session=session, email=data["email"], is_login=False
         )
@@ -71,7 +72,7 @@ class AuthRepository:
 
             stmt = select(User).filter_by(email=data["email"])
 
-            db_user: ReturnUserS = (await session.scalars(stmt)).one_or_none()
+            db_user: GetUserResponse = (await session.scalars(stmt)).one_or_none()
             return db_user
         return None
 
@@ -80,7 +81,7 @@ class AuthRepository:
         session: AsyncSession,
         email: str,
         password: str,
-    ) -> dict[str:TokenDataT, str:str]:
+    ) -> Mapping[str, TokenDataT | str]:
         user: User = await self.retrieve_user_by_email(
             session=session, email=email, is_login=True
         )

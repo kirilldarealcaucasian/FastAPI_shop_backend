@@ -1,40 +1,31 @@
-from uuid import UUID
+from collections.abc import Sequence
 
-from loguru import logger
-from pydantic import PydanticSchemaGenerationError, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import Book
-from ..schemas import (
-    BookIdS,
-    ReturnBookS,
-    UpdateBookS,
-    UpdatePartiallyBookS,
+from ..schemas.request.book import CreateBookRequest
+from ..schemas.request.book import UpdateBookRequest, UpdatePartiallyBookRequest
+from ..schemas.response.book import (
+    CreateBookResponse,
+    GetBookResponse,
+    UpdateBookResponse,
 )
-from ..schemas.book_schemas import CreateBookS
-from ..schemas.domain_model_schemas import BookS
 from ..services.utils.filters import BookFilter, Pagination
 from .entity_base_service import EntityBaseService
 from ..repositories.book_repo import CombinedBookRepoInterface
-from ..exceptions import DomainModelConversionError
+from dataclasses import dataclass
 
 
-class BookService(EntityBaseService):
-    def __init__(
-        self,
-        book_repo: CombinedBookRepoInterface,
-    ):
-        self._book_repo = book_repo
+@dataclass(slots=True, frozen=True)
+class BookService(EntityBaseService[Book]):
+    book_repo: CombinedBookRepoInterface
 
-    async def get_book_by_id(self, session: AsyncSession, id: UUID) -> ReturnBookS:
-        book: Book = await super().get_by_id(
-            session=session, repo=self._book_repo, id=str(id)
-        )
-
+    async def get_book_by_id(self, session: AsyncSession, id: int) -> GetBookResponse:
+        book = await super().get_by_id(session=session, repo=self.book_repo, id=id)
         categories: list[str] = [category.name for category in book.categories]
         authors: list[str] = [author.name for author in book.authors]
 
-        return ReturnBookS(
+        return GetBookResponse(
             id=book.id,
             name=book.name,
             image=book.image,
@@ -54,15 +45,15 @@ class BookService(EntityBaseService):
 
     async def get_all_books(
         self, session: AsyncSession, filters: BookFilter, pagination: Pagination
-    ) -> list[ReturnBookS]:
-        books: list[Book] = await self._book_repo.get_all_books(
+    ) -> Sequence[GetBookResponse]:
+        books = await self.book_repo.get_all_books(
             session=session, filters=filters, pagination=pagination
         )
-        res: list[ReturnBookS] = []
+        res: list[GetBookResponse] = []
 
         for book in books:
             res.append(
-                ReturnBookS(
+                GetBookResponse(
                     id=book.id,
                     name=book.name,
                     image=book.image,
@@ -82,58 +73,52 @@ class BookService(EntityBaseService):
             )
         return res
 
-    async def create_book(self, session: AsyncSession, dto: CreateBookS) -> BookIdS:
+    async def create_book(
+        self, session: AsyncSession, dto: CreateBookRequest
+    ) -> CreateBookResponse:
         data: dict = dto.model_dump(exclude_unset=True, exclude_none=True)
-        try:
-            domain_model = BookS(**data)
-        except (ValidationError, PydanticSchemaGenerationError) as e:
-            logger.bind(data=data).error(
-                "Failed to generate domain model", exc_info=True
-            )
-            raise DomainModelConversionError() from e
+        orm_model = Book(**data)
 
-        book_id: int = await super().create(
-            repo=self._book_repo, session=session, domain_model=domain_model
+        created_book: Book = await super().create(
+            repo=self.book_repo, session=session, orm_model=orm_model
         )
-
         await super().commit(session=session)
-        return BookIdS(id=book_id)
+
+        return CreateBookResponse(
+            id=created_book.id,
+            name=created_book.name,
+            summary=created_book.summary,
+            price_per_unit=created_book.price_per_unit,
+            number_in_stock=created_book.number_in_stock,
+            isbn=created_book.isbn,
+            rating=created_book.rating,
+            discount=created_book.discount,
+        )
 
     async def delete_book(
         self,
         session: AsyncSession,
-        book_id: str,
+        book_id: int,
     ) -> None:
-        # TODO: later later
-        # return await self._storage.delete_instance_with_images(
-        #     delete_images=True, instance_id=book_id, session=session
-        # )
-        pass
+        return await self.book_repo.delete(session=session, instance_id=book_id)
 
     async def update_book(
         self,
         session: AsyncSession,
-        book_id: str | int,
-        dto: UpdateBookS | UpdatePartiallyBookS,
-    ) -> UpdateBookS:
+        book_id: int,
+        dto: UpdateBookRequest | UpdatePartiallyBookRequest,
+    ) -> UpdateBookResponse:
         data: dict = dto.model_dump(exclude_unset=True, exclude_none=True)
 
-        try:
-            domain_model = BookS(**data)
-        except (ValidationError, PydanticSchemaGenerationError) as e:
-            logger.bind(data=data).error(
-                "Failed to generate domain model", exc_info=True
-            )
-            raise DomainModelConversionError from e
-
+        book = Book(**data)
         updated_book: Book = await super().update(
-            repo=self._book_repo,
+            repo=self.book_repo,
             session=session,
             instance_id=book_id,
-            domain_model=domain_model,
+            orm_model=book,
         )
 
-        return UpdateBookS(
+        return UpdateBookResponse(
             isbn=updated_book.isbn,
             summary=updated_book.summary,
             rating=updated_book.rating,

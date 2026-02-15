@@ -5,11 +5,12 @@ from fastapi.params import Cookie
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.schemas import ReturnShoppingSessionS, ReturnUserS
+from application.schemas.response.shopping_session import GetShoppingSessionResponse
+from application.schemas.response.user import GetUserResponse
 from application.services import (CartService, ShoppingSessionService,
                                   UserService)
-from auth.helpers import get_token_payload
-from auth.repositories import AuthRepository
+from ..helpers import get_token_payload
+from ..repositories import AuthRepository
 from core.exceptions import NoCookieError, UnauthorizedError
 from infrastructure.postgres import db_client
 
@@ -42,7 +43,7 @@ class PermissionService(AuthRepository):
             raise UnauthorizedError(detail="You are not allowed to perform this operation")
 
         try:
-            user: ReturnUserS = await user_service.get_user_by_order_id(
+            user: GetUserResponse = await user_service.get_user_by_order_id(
                 session=session,
                 order_id=order_id
             )  # if user is not owner of the order, http exception will be raised
@@ -67,7 +68,7 @@ class PermissionService(AuthRepository):
         if not shopping_session_id:
             raise NoCookieError("No shopping_session_id in the cookie")
 
-        shopping_session: ReturnShoppingSessionS = await shopping_session_service.get_shopping_session_by_id(
+        shopping_session: GetShoppingSessionResponse = await shopping_session_service.get_shopping_session_by_id(
             session=session,
             id=shopping_session_id
         )

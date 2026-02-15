@@ -2,7 +2,7 @@ import pytest
 from httpx import AsyncClient
 
 from application.cmd import app
-from application.schemas import UpdatePartiallyOrderS
+from application.schemas.request.order import UpdatePartiallyOrderRequest
 
 
 @pytest.mark.asyncio
@@ -144,7 +144,7 @@ async def test_delete_book_from_order(
 )
 async def test_update_order(
         order_id: int,
-        update_data: UpdatePartiallyOrderS,
+        update_data: UpdatePartiallyOrderRequest,
         status_code: int,
         get_admin_header: str
 ):
@@ -155,5 +155,4 @@ async def test_update_order(
             json=update_data
         )
     assert response.status_code == status_code
-
 

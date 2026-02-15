@@ -1,56 +1,48 @@
-from loguru import logger
-from pydantic import PydanticSchemaGenerationError, ValidationError
+from collections.abc import Sequence
+
 from sqlalchemy.ext.asyncio import AsyncSession
-from ..schemas.domain_model_schemas import AuthorS
+
+from ..models import Author
 from .entity_base_service import EntityBaseService
 from ..repositories.orm_entity_repo import OrmEntityRepoInterface
-from ..exceptions import DomainModelConversionError
 from ..schemas.response.author import GetAuthorResponse
 from ..schemas.request.author import (
     CreateAuthorRequest,
     UpdateAuthorRequest,
     UpdatePartiallyAuthorRequest,
 )
+from dataclasses import dataclass
 
 
+@dataclass(slots=True, frozen=True)
 class AuthorService(EntityBaseService):
-    def __init__(
-        self,
-        author_repo: OrmEntityRepoInterface,
-    ):
-        self._author_repo = author_repo
+    author_repo: OrmEntityRepoInterface
 
-    async def get_all_authors(self, session: AsyncSession) -> list[GetAuthorResponse]:
+    async def get_all_authors(self, session: AsyncSession) -> Sequence[GetAuthorResponse]:
         return await super().get_all(
-            repo=self._author_repo,
+            repo=self.author_repo,
             session=session,
         )
 
     async def get_authors_by_filters(
         self, session: AsyncSession, **filters
-    ) -> list[GetAuthorResponse]:
-        return await super().get_all(repo=self._author_repo, session=session, **filters)
+    ) -> Sequence[GetAuthorResponse]:
+        return await super().get_all(repo=self.author_repo, session=session, **filters)
 
     async def create_author(
         self, session: AsyncSession, dto: CreateAuthorRequest
     ) -> None:
         data: dict = dto.model_dump(exclude_unset=True)
-        try:
-            domain_model = AuthorS(**data)
-        except (ValidationError, PydanticSchemaGenerationError) as e:
-            logger.bind(dto=dto).opt(exception=e).error(
-                "Failed to generate domain model",
-            )
-            raise DomainModelConversionError from e
+        orm_model = Author(**data)
 
         await super().create(
-            repo=self._author_repo, session=session, orm_model=domain_model
+            repo=self.author_repo, session=session, orm_model=orm_model
         )
         await super().commit(session=session)
 
     async def delete_author(self, session: AsyncSession, author_id: int) -> None:
         await super().delete(
-            repo=self._author_repo, session=session, instance_id=author_id
+            repo=self.author_repo, session=session, instance_id=author_id
         )
         await super().commit(session=session)
 
@@ -61,16 +53,10 @@ class AuthorService(EntityBaseService):
         data: UpdatePartiallyAuthorRequest | UpdateAuthorRequest,
     ):
         dto: dict = data.model_dump(exclude_unset=True)
-        try:
-            domain_model = AuthorS(**dto)
-        except (ValidationError, PydanticSchemaGenerationError):
-            extra = {"dto": dto}
-            logger.error("failed to convert to domain model", extra, exc_info=True)
-            raise DomainModelConversionError
 
         await super().update(
-            repo=self._author_repo,
+            repo=self.author_repo,
             session=session,
-            domain_model=domain_model,
+            orm_model=dto,
             instance_id=author_id,
         )

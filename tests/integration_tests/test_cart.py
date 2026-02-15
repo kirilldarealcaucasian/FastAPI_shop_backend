@@ -11,9 +11,13 @@ from application.repositories.order_repo import OrderRepository
 from application.repositories.shopping_session_repo import \
     ShoppingSessionRepository
 from application.repositories.user_repo import UserRepository
-from application.schemas import (AddBookToCartS, DeleteBookFromCartS,
-                                 ReturnBookS, ReturnCartS)
-from application.schemas.order_schemas import AssocBookS
+from application.schemas.request.cart import (
+    AddBookToCartRequest,
+    DeleteBookFromCartRequest,
+)
+from application.schemas.response.book import GetBookResponse
+from application.schemas.response.cart import GetCartResponse
+from application.schemas.response.order import AssocBookResponse
 from application.services import (BookService, CartService,
                                   ShoppingSessionService, UserService)
 from application.services.storage.internal_storage.image_manager import \
@@ -87,19 +91,19 @@ async def test_add_book_to_cart_for_the_first_time(
         session: AsyncSession,
         shopping_session_service: ShoppingSessionService
 ):
-    res: ReturnCartS = await cart_service.add_book_to_cart(
+    res: GetCartResponse = await cart_service.add_book_to_cart(
         session=session,
         shopping_session_id=UUID("01e1ca73-5dea-46f2-a19b-56b5a7804efc"),
-        dto=AddBookToCartS(
+        dto=AddBookToCartRequest(
             book_id=UUID("d2bafd10-4192-4930-aa40-9bcf4b39a848"),
             quantity=1
         )
     )
 
-    assert res == ReturnCartS(
+    assert res == GetCartResponse(
         cart_id=UUID('01e1ca73-5dea-46f2-a19b-56b5a7804efc'),
         books=[
-            AssocBookS(
+            AssocBookResponse(
                 book_id=UUID('20aaefdc-ab3b-4074-af87-dc26a36bb6a0'),
                 book_title='Example book',
                 authors=['Michael Jordan'],
@@ -109,7 +113,7 @@ async def test_add_book_to_cart_for_the_first_time(
                 count_ordered=1,
                 price_per_unit=100
             ),
-            AssocBookS(
+            AssocBookResponse(
                 book_id=UUID('d2bafd10-4192-4930-aa40-9bcf4b39a848'),
                 book_title='Example book 2 ',
                 authors=['Alex Checkhov'],
@@ -122,7 +126,7 @@ async def test_add_book_to_cart_for_the_first_time(
         ])
 
     session.expire_all()
-    book: ReturnBookS = await cart_service._book_service.get_book_by_id(
+    book: GetBookResponse = await cart_service._book_service.get_book_by_id(
         session=session,
 
         id=UUID("d2bafd10-4192-4930-aa40-9bcf4b39a848")
@@ -143,19 +147,19 @@ async def test_add_book_to_cart_for_the_second_time(
         session: AsyncSession,
         shopping_session_service: ShoppingSessionService
 ):
-    res: ReturnCartS = await cart_service.add_book_to_cart(
+    res: GetCartResponse = await cart_service.add_book_to_cart(
         session=session,
         shopping_session_id=UUID("01e1ca73-5dea-46f2-a19b-56b5a7804efc"),
-        dto=AddBookToCartS(
+        dto=AddBookToCartRequest(
             book_id=UUID("d2bafd10-4192-4930-aa40-9bcf4b39a848"),
             quantity=1
         )
     )
 
-    assert res == ReturnCartS(
+    assert res == GetCartResponse(
         cart_id=UUID('01e1ca73-5dea-46f2-a19b-56b5a7804efc'),
         books=[
-            AssocBookS(
+            AssocBookResponse(
                 book_id=UUID('20aaefdc-ab3b-4074-af87-dc26a36bb6a0'),
                 book_title='Example book',
                 authors=['Michael Jordan'],
@@ -165,7 +169,7 @@ async def test_add_book_to_cart_for_the_second_time(
                 count_ordered=1,
                 price_per_unit=100
             ),
-            AssocBookS(
+            AssocBookResponse(
                 book_id=UUID('d2bafd10-4192-4930-aa40-9bcf4b39a848'),
                 book_title='Example book 2 ',
                 authors=['Alex Checkhov'],
@@ -177,7 +181,7 @@ async def test_add_book_to_cart_for_the_second_time(
             )
         ])
 
-    book: ReturnBookS = await cart_service._book_service.get_book_by_id(
+    book: GetBookResponse = await cart_service._book_service.get_book_by_id(
         session=session,
         id=UUID("d2bafd10-4192-4930-aa40-9bcf4b39a848")
     )
@@ -201,7 +205,7 @@ async def test_add_more_books_than_in_stock(
         _ = await cart_service.add_book_to_cart(
             session=session,
             shopping_session_id=UUID("01e1ca73-5dea-46f2-a19b-56b5a7804efc"),
-            dto=AddBookToCartS(
+            dto=AddBookToCartRequest(
                 book_id=UUID("d2bafd10-4192-4930-aa40-9bcf4b39a848"),
                 quantity=100000
             )
@@ -216,19 +220,19 @@ async def test_delete_book_from_cart(
         session: AsyncSession,
         shopping_session_service: ShoppingSessionService
 ):
-    res: ReturnCartS = await cart_service.delete_book_from_cart(
+    res: GetCartResponse = await cart_service.delete_book_from_cart(
         session=session,
-        deletion_data=DeleteBookFromCartS(
+        deletion_data=DeleteBookFromCartRequest(
             book_id=UUID('d2bafd10-4192-4930-aa40-9bcf4b39a848'),
             quantity=1
         ),
         shopping_session_id=UUID("01e1ca73-5dea-46f2-a19b-56b5a7804efc")
     )
 
-    assert res == ReturnCartS(
+    assert res == GetCartResponse(
         cart_id=UUID('01e1ca73-5dea-46f2-a19b-56b5a7804efc'),
         books=[
-            AssocBookS(
+            AssocBookResponse(
                 book_id=UUID('20aaefdc-ab3b-4074-af87-dc26a36bb6a0'),
                 book_title='Example book',
                 authors=['Michael Jordan'],
@@ -238,7 +242,7 @@ async def test_delete_book_from_cart(
                 count_ordered=1,
                 price_per_unit=100
             ),
-            AssocBookS(
+            AssocBookResponse(
                 book_id=UUID('d2bafd10-4192-4930-aa40-9bcf4b39a848'),
                 book_title='Example book 2 ',
                 authors=['Alex Checkhov'],
@@ -251,7 +255,7 @@ async def test_delete_book_from_cart(
         ])
 
     session.expire_all()
-    book: ReturnBookS = await cart_service._book_service.get_book_by_id(
+    book: GetBookResponse = await cart_service._book_service.get_book_by_id(
         session=session,
         id=UUID("d2bafd10-4192-4930-aa40-9bcf4b39a848")
     )
@@ -271,19 +275,19 @@ async def test_delete_all_books_from_cart(
         session: AsyncSession,
         shopping_session_service: ShoppingSessionService
 ):
-    res: ReturnCartS = await cart_service.delete_book_from_cart(
+    res: GetCartResponse = await cart_service.delete_book_from_cart(
         session=session,
-        deletion_data=DeleteBookFromCartS(
+        deletion_data=DeleteBookFromCartRequest(
             book_id=UUID('d2bafd10-4192-4930-aa40-9bcf4b39a848'),
             quantity=1
         ),
         shopping_session_id=UUID("01e1ca73-5dea-46f2-a19b-56b5a7804efc")
     )
 
-    assert res == ReturnCartS(
+    assert res == GetCartResponse(
         cart_id=UUID('01e1ca73-5dea-46f2-a19b-56b5a7804efc'),
         books=[
-            AssocBookS(
+            AssocBookResponse(
                 book_id=UUID('20aaefdc-ab3b-4074-af87-dc26a36bb6a0'),
                 book_title='Example book',
                 authors=['Michael Jordan'],
@@ -296,7 +300,7 @@ async def test_delete_all_books_from_cart(
         ])
 
     session.expire_all()
-    book: ReturnBookS = await cart_service._book_service.get_book_by_id(
+    book: GetBookResponse = await cart_service._book_service.get_book_by_id(
         session=session,
         id=UUID("d2bafd10-4192-4930-aa40-9bcf4b39a848")
     )
@@ -317,7 +321,7 @@ async def test_delete_more_books_than_in_cart(
     with pytest.raises(BadRequest) as excinfo:
         _ = await cart_service.delete_book_from_cart(
             session=session,
-            deletion_data=DeleteBookFromCartS(
+            deletion_data=DeleteBookFromCartRequest(
                 book_id=UUID('20aaefdc-ab3b-4074-af87-dc26a36bb6a0'),
                 quantity=1000
             ),
@@ -335,7 +339,7 @@ async def test_delete_book_that_not_in_cart(
     with pytest.raises(EntityDoesNotExist) as excinfo:
         _ = await cart_service.delete_book_from_cart(
             session=session,
-            deletion_data=DeleteBookFromCartS(
+            deletion_data=DeleteBookFromCartRequest(
                 book_id=UUID('17cfb58c-1dab-46d1-9f8d-9de15e111a4a'),
                 quantity=1000
             ),

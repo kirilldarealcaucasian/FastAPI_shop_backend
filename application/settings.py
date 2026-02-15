@@ -14,7 +14,6 @@ class Settings(BaseSettings):
     MODE: Literal["DEV", "TEST", "LOCAL"]
 
     LOG_LEVEL: str
-    LOGS_JOURNAL_NAME: str
 
     DB_USER: str
     DB_PASSWORD: str
@@ -74,4 +73,4 @@ class Settings(BaseSettings):
         return None
 
 
-settings = Settings()
+settings = Settings()  # type: ignore

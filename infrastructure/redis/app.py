@@ -59,6 +59,15 @@ class RedisConnector:
             )
             return None
 
+    async def disconnect(self) -> None:
+        """Closes connection to redis-server"""
+        if self.__connection:
+            await self.__connection.close()
+            self.__connection = None
+            logger.info(
+                f"Connection to redis on redis://{self.host}:{self.port} has been closed"
+            )
+
     async def get_redis_connection_dependency(self) -> Redis | None:
         redis_con = self.connection
         if redis_con is None:

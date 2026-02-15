@@ -1,4 +1,5 @@
 import datetime
+from collections.abc import Mapping
 from datetime import timedelta
 
 import jwt
@@ -6,13 +7,13 @@ from bcrypt import checkpw, hashpw
 from fastapi import HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials
 
-from auth.config.auth_config import auth_conf
-from auth.schemas import Token, TokenPayload
+from .config.auth_config import auth_conf
+from .schemas import Token, TokenPayload
 from core.exceptions import UnauthorizedError
 
 
 def encode_jwt(
-        payload: dict,
+        payload: Mapping,
         expire_timedelta: timedelta,
         private_key: str = auth_conf.JWT_PRIVATE_KEY.read_text(),
         algorithm: str = auth_conf.JWT_ENCODE_ALGORITHM,
@@ -37,7 +38,7 @@ def decode_jwt(
         token: str | bytes,
         algorithm: str = auth_conf.JWT_DECODE_ALGORITHM,
         public_key: str = auth_conf.JWT_PUBLIC_KEY.read_text()
-) -> dict:
+) -> Mapping:
     try:
         return jwt.decode(jwt=token, algorithms=algorithm, key=public_key)
     except jwt.exceptions.DecodeError:
@@ -51,7 +52,7 @@ def decode_jwt(
             detail="Token has been expired")
 
 
-def validate_token(payload: dict):
+def validate_token(payload: Mapping):
     email: str = getattr(payload, "sub", None)
     expiration: int = getattr(payload, "exp")
     if not email or not expiration or "role_name" not in payload:
@@ -78,13 +79,13 @@ def validate_password(password: str, hashed_password: str) -> bool:
     return is_password_correct
 
 
-def get_token_payload(credentials: HTTPAuthorizationCredentials) -> dict:
+def get_token_payload(credentials: HTTPAuthorizationCredentials) -> Mapping:
     token: str = credentials.credentials
     if not token:
         raise UnauthorizedError(
             detail="No token in the header. You are not authorized"
         )
-    payload: dict = decode_jwt(token)
+    payload: Mapping = decode_jwt(token)
     return payload
 
 
@@ -111,5 +112,3 @@ def issue_token(
         payload=payload,
         expire_timedelta=expire_timedelta
     )
-
-

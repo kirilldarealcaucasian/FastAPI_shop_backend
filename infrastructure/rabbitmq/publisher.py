@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from infrastructure.rabbitmq.connector import RabbitConnector, rabbit_connector
+from .connector import RabbitConnector, rabbit_connector
 
 __all__ = ("rabbit_publisher", "RabbitPublisher")
 

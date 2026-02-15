@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 import time
 import sys
 import os
@@ -9,6 +10,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.exceptions import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from infrastructure.postgres import db_client
 from loguru import logger
 
 from .api.v1 import (
@@ -24,7 +26,16 @@ from .settings import settings
 from infrastructure.redis import redis_client
 
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    db_client.connect()
+    await redis_client.connect()
+    yield
+    await db_client.disconnect()
+    await redis_client.disconnect()
+
+
+app = FastAPI(lifespan=lifespan, docs_url="/api/v1/docs", redoc_url="/api/v1/redoc")
 app.mount("/api/v1", app)
 
 app.add_middleware(
@@ -60,7 +71,7 @@ logger.configure(
         {
             "sink": sys.stdout,
             "level": os.getenv("log_level") or "INFO",
-            "format": '<level>{level}: msg="{message}" {kv}</level>',
+            "format": '<level>{level}: fn="{function}" msg="{message}" {kv}</level>',
         }
     ],
     patcher=render_metadata,  # type: ignore
@@ -118,9 +129,9 @@ if settings.MODE != "TEST":
         return await call_next(request)
 
 
-@app.get("/")
+@app.get("/health")
 def home():
-    return {"message": "Heeeeeey!"}
+    return {"message": "Ok"}
 
 
 if __name__ == "__main__":

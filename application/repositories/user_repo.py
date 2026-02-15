@@ -5,7 +5,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from application.models import Book, BookOrderAssoc, Order, User
+from ..models import Book, BookOrderAssoc, Order, User
 from .orm_entity_repo import OrmEntityRepository
 from ..repositories.orm_entity_repo import OrmEntityRepoInterface
 from ..exceptions import DBError, NotFoundError

@@ -3,12 +3,15 @@ from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.models import User
-from application.schemas import (AuthenticatedUserS, LoginUserS, RegisterUserS,
-                                 ReturnUserS)
-from auth import helpers
-from auth.helpers import get_token_payload, validate_token
-from auth.repositories import AuthRepository
-from auth.schemas.token_schema import AuthResponse, TokenPayload
+from application.schemas.request.user import LoginUserRequest, RegisterUserRequest
+from application.schemas.response.user import (
+    AuthenticatedUserResponse,
+    GetUserResponse,
+)
+from .. import helpers
+from ..helpers import get_token_payload, validate_token
+from ..repositories import AuthRepository
+from ..schemas.token_schema import AuthResponse, TokenPayload
 from core.exceptions import (AlreadyExistsError, DuplicateError, NotFoundError,
                              UnauthorizedError)
 
@@ -18,7 +21,7 @@ class AuthService:
     def __init__(self, repository: AuthRepository = Depends(AuthRepository)):
         self._auth_repo = repository
 
-    async def register_user(self, session: AsyncSession, data: RegisterUserS):
+    async def register_user(self, session: AsyncSession, data: RegisterUserRequest):
         payload_copy: dict = data.model_copy().model_dump()
         hashed_password = helpers.hash_password(payload_copy["password"])
         del payload_copy["confirm_password"]
@@ -27,7 +30,7 @@ class AuthService:
         payload_copy["hashed_password"] = hashed_password
 
         try:
-            user: ReturnUserS = await self._auth_repo.create_user(
+            user: GetUserResponse = await self._auth_repo.create_user(
                 session=session,
                 data=payload_copy
             )
@@ -39,7 +42,7 @@ class AuthService:
     async def authorize_user(
             self,
             session: AsyncSession,
-            user_creds: LoginUserS
+            user_creds: LoginUserRequest
     ) -> AuthResponse:
         email = user_creds.email
 
@@ -80,7 +83,7 @@ class AuthService:
             self,
             session: AsyncSession,
             credentials: HTTPAuthorizationCredentials
-    ) -> AuthenticatedUserS:
+    ) -> AuthenticatedUserResponse:
         payload: dict = get_token_payload(credentials=credentials)
         email: str = validate_token(payload)
 
@@ -89,7 +92,7 @@ class AuthService:
             email=email, is_login=True
         )
 
-        return AuthenticatedUserS(
+        return AuthenticatedUserResponse(
             id=user.id,
             first_name=user.first_name,
             last_name=user.last_name,

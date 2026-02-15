@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Protocol, Type
 from uuid import UUID
 
@@ -6,8 +7,8 @@ from sqlalchemy.exc import CompileError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from application.models import Book
-from application.services.utils.filters import BookFilter, Pagination
+from ..models import Book
+from ..services.utils.filters import BookFilter, Pagination
 from .orm_entity_repo import OrmEntityRepoInterface, OrmEntityRepository
 from ..types import Id
 from ..exceptions import FilterError
@@ -16,12 +17,16 @@ from ..exceptions import FilterError
 class BookRepoInterface(Protocol):
     async def get_all_books(
         self, session: AsyncSession, filters: BookFilter, pagination: Pagination
-    ) -> list[Book]: ...
+    ) -> Sequence[Book]: ...
 
-    async def get_by_id(self, session: AsyncSession, id: Id) -> Book: ...
+    async def get_by_id(self, session: AsyncSession, id: Id) -> Book | None: ...
 
 
-class CombinedBookRepoInterface(BookRepoInterface, OrmEntityRepoInterface, Protocol):
+class CombinedBookRepoInterface(
+    BookRepoInterface,
+    OrmEntityRepoInterface,
+    Protocol,
+):
     pass
 
 
@@ -32,7 +37,7 @@ class BookRepository(OrmEntityRepository[Book]):
 
     async def get_all_books(
         self, session: AsyncSession, filters: BookFilter, pagination: Pagination
-    ) -> list[Book]:
+    ) -> Sequence[Book]:
         stmt = select(self.model).options(
             selectinload(Book.categories), selectinload(Book.authors)
         )

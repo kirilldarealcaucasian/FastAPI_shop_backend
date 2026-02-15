@@ -12,3 +12,4 @@ TODO.txt
 /application/services/.ruff_cache/
 ./check.py
 ./application/services/storage/s3_storage/.env
+AGENTS.md

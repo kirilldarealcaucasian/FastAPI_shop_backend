@@ -1,53 +1,40 @@
-from typing import Annotated, Union
+from collections.abc import Sequence
 
-from fastapi import Depends
-from loguru import logger
-from pydantic import PydanticSchemaGenerationError, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models import BookOrderAssoc, Order, User
+from ..schemas.response.user import GetUserWithOrdersResponse, GetUserResponse
+from ..schemas.request.user import UpdatePartiallyUserRequest, UpdateUserRequest
+from ..types import Id
+
+from ..models import User
 from ..repositories.order_repo import (
     CombinedOrderRepositoryInterface,
-    OrderRepository,
 )
-from ..repositories.user_repo import CombinedUserInterface, UserRepository
-from ..schemas import (
-    ReturnOrderS,
-    ReturnUserS,
-    ReturnUserWithOrdersS,
-    UpdatePartiallyUserS,
-    UpdateUserS,
-)
-from ..schemas.domain_model_schemas import UserS
+from ..repositories.user_repo import CombinedUserInterface
+
 from ..schemas.filters import PaginationS
-from ..schemas.order_schemas import AssocBookS
+from ..schemas.response.order import GetOrderResponse
 from ..services.order_service.utils import order_assembler
 from .entity_base_service import EntityBaseService
 from ..exceptions import (
     EntityDoesNotExist,
     InvalidModelCredentials,
     NotFoundError,
-    ServerError,
 )
+from dataclasses import dataclass
 
 
+@dataclass(slots=True, frozen=True)
 class UserService(EntityBaseService):
-    def __init__(
-        self,
-        user_repo: Annotated[CombinedUserInterface, Depends(UserRepository)],
-        order_repo: Annotated[
-            CombinedOrderRepositoryInterface, Depends(OrderRepository)
-        ],
-    ):
-        self._user_repo: CombinedUserInterface = user_repo
-        self._order_repo: CombinedOrderRepositoryInterface = order_repo
+    user_repo: CombinedUserInterface
+    order_repo: CombinedOrderRepositoryInterface
 
     async def get_all_users(
         self, session: AsyncSession, pagination: PaginationS
-    ) -> list[ReturnUserS] | ReturnUserS:
+    ) -> Sequence[GetUserResponse] | GetUserResponse:
         try:
             users = await super().get_all(
-                repo=self._user_repo,
+                repo=self.user_repo,
                 session=session,
                 page=pagination.page,
                 limit=pagination.limit,
@@ -56,12 +43,12 @@ class UserService(EntityBaseService):
             raise EntityDoesNotExist(entity="User")
         return users
 
-    async def get_user_by_id(self, session: AsyncSession, id: int) -> ReturnUserS:
+    async def get_user_by_id(self, session: AsyncSession, id: Id) -> GetUserResponse:
         user: User = await super().get_by_id(
-            repo=self._user_repo, session=session, id=id
+            repo=self.user_repo, session=session, id=id
         )  # if not exits http exception will be raised
 
-        return ReturnUserS(
+        return GetUserResponse(
             id=user.id,
             first_name=user.first_name,
             last_name=user.last_name,
@@ -72,33 +59,30 @@ class UserService(EntityBaseService):
 
     async def get_user_with_orders(
         self, session: AsyncSession, user_id: int
-    ) -> ReturnUserWithOrdersS:
-        user: ReturnUserS = await self.get_user_by_id(
+    ) -> GetUserWithOrdersResponse:
+        user = await self.get_user_by_id(
             session=session, id=user_id
         )  # if no user, http_exception will be raised
 
         try:
-            user: Union[User, None] = await self._user_repo.get_user_with_orders(
+            user = await self.user_repo.get_user_with_orders(
                 session=session, user_id=user_id
             )
         except NotFoundError:
-            return ReturnUserWithOrdersS(
+            return GetUserWithOrdersResponse(
                 first_name=user.first_name,
                 last_name=user.last_name,
                 email=user.email,
                 orders=[],
             )
 
-        orders: list[Order] = user.orders
-        return_orders: list[ReturnOrderS] = []
+        return_orders: list[GetOrderResponse] = []
 
-        for order in orders:
-            order_details: list[BookOrderAssoc] = order.order_details
+        for order in user.orders:
+            order_books = order_assembler(order_details=order.order_details)
+            return_orders.append(GetOrderResponse(order_id=order.id, books=order_books))
 
-            order_books: list[AssocBookS] = order_assembler(order_details=order_details)
-            return_orders.append(ReturnOrderS(order_id=order.id, books=order_books))
-
-        return ReturnUserWithOrdersS(
+        return GetUserWithOrdersResponse(
             first_name=user.first_name,
             last_name=user.last_name,
             email=user.email,
@@ -109,17 +93,16 @@ class UserService(EntityBaseService):
         self,
         session: AsyncSession,
         order_id: int,
-    ) -> ReturnUserS:
-
+    ) -> GetUserResponse:
         _ = await super().get_by_id(
-            session=session, repo=self._order_repo, id=order_id
+            session=session, repo=self.order_repo, id=order_id
         )  # if no order, http_exception will be raised
 
-        user = await self._user_repo.get_user_by_order_id(
+        user = await self.user_repo.get_user_by_order_id(
             session=session, order_id=order_id
         )
 
-        return ReturnUserS(
+        return GetUserResponse(
             id=user.id,
             first_name=user.first_name,
             last_name=user.last_name,
@@ -129,30 +112,22 @@ class UserService(EntityBaseService):
         )
 
     async def delete_user(self, session: AsyncSession, user_id: str | int) -> None:
-        await super().delete(repo=self._user_repo, session=session, instance_id=user_id)
+        await super().delete(repo=self.user_repo, session=session, instance_id=user_id)
         await super().commit(session=session)
 
     async def update_user(
         self,
         session: AsyncSession,
         user_id: str | int,
-        dto: UpdateUserS | UpdatePartiallyUserS,
+        dto: UpdateUserRequest | UpdatePartiallyUserRequest,
     ) -> None:
         data: dict = dto.model_dump(exclude_unset=True, exclude_none=True)
         if not dto:
             raise InvalidModelCredentials(message="invalid data")
 
-        try:
-            domain_model = UserS(**data)
-        except (ValidationError, PydanticSchemaGenerationError):
-            logger.error(
-                "Failed to generate domain model", extra={"dto": dto}, exc_info=True
-            )
-            raise ServerError()
-
         return await super().update(
             session=session,
-            repo=self._user_repo,
+            repo=self.user_repo,
             instance_id=user_id,
-            domain_model=domain_model,
+            orm_model=data,
         )

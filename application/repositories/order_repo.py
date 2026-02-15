@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Protocol, Type, TypeAlias, Union
 from uuid import UUID
 
@@ -6,12 +7,11 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from application.models import Book, BookOrderAssoc, Order, User
-from application.services.utils.filters import Pagination
-from core import OrmEntityRepository
-from core.base_repos import OrmEntityRepoInterface
-from core.entity_base_service import Id
-from core.exceptions import DBError, NotFoundError
+from ..models import Book, BookOrderAssoc, Order, User
+from ..services.utils.filters import Pagination
+from .orm_entity_repo import OrmEntityRepoInterface, OrmEntityRepository
+from ..types import Id
+from ..exceptions import DBError, NotFoundError
 
 __all__ = (
     "OrderRepository",
@@ -22,11 +22,11 @@ __all__ = (
 class OrderRepositoryInterface(Protocol):
     async def get_all_orders(
         self, session: AsyncSession, pagination: Pagination
-    ) -> list[Order]: ...
+    ) -> Sequence[Order]: ...
 
     async def get_orders_by_user_id(
         self, session: AsyncSession, user_id: int
-    ) -> list[BookOrderAssoc]: ...
+    ) -> Sequence[BookOrderAssoc]: ...
 
     async def get_order_by_payment_id(
         self, session: AsyncSession, payment_id: UUID
@@ -34,7 +34,7 @@ class OrderRepositoryInterface(Protocol):
 
     async def get_by_id(
         self, session: AsyncSession, id: Id
-    ) -> list[BookOrderAssoc]: ...
+    ) -> Sequence[BookOrderAssoc]: ...
 
     async def get_order_summary(
         self, session: AsyncSession, payment_id: UUID
@@ -71,7 +71,7 @@ class OrderRepository(OrmEntityRepository):
 
     async def get_all_orders(
         self, session: AsyncSession, pagination: Pagination
-    ) -> list[Order]:
+    ) -> Sequence[Order]:
         stmt = (
             select(Order)
             .options(
@@ -89,7 +89,7 @@ class OrderRepository(OrmEntityRepository):
 
     async def get_orders_by_user_id(
         self, session: AsyncSession, user_id: int
-    ) -> list[BookOrderAssoc]:
+    ) -> Sequence[BookOrderAssoc]:
         stmt = (
             select(BookOrderAssoc)
             .join_from(
@@ -137,7 +137,11 @@ class OrderRepository(OrmEntityRepository):
 
         return order
 
-    async def get_by_id(self, session: AsyncSession, id: int) -> list[BookOrderAssoc]:
+    async def get_by_id(
+        self,
+        session: AsyncSession,
+        id: int,
+    ) -> Sequence[BookOrderAssoc]:
         stmt = (
             select(BookOrderAssoc)
             .join_from(BookOrderAssoc, Order, BookOrderAssoc.order_id == Order.id)

@@ -10,9 +10,9 @@ from fastapi import HTTPException, status
 from loguru import logger
 from PIL import Image
 
-from application.repositories.cart_repo import CartRepository
-from application.tasks.email_config.email_config import email_settings
-from application.tasks.task_helpers import email_generator, parse_logs_journal
+from ..repositories.cart_repo import CartRepository
+from .email_config.email_config import email_settings
+from .task_helpers import email_generator, parse_logs_journal
 from core.image_conf import ImageConfig
 from infrastructure.celery.app import celery
 from infrastructure.mail import MailClient

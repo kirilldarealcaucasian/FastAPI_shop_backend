@@ -1,11 +1,15 @@
-from application.models import Book, BookOrderAssoc
-from application.schemas.order_schemas import AssocBookS
+from collections.abc import Sequence
+
+from ....models import Book, BookOrderAssoc
+from ....schemas.response.order import AssocBookResponse
 
 
-def order_assembler(order_details: list[BookOrderAssoc]) -> list[AssocBookS]:
-    """Walks through order_details, retrieves books and adds them to ReturnOrderS"""
+def order_assembler(
+    order_details: Sequence[BookOrderAssoc],
+) -> Sequence[AssocBookResponse]:
+    """Walks through order_details, retrieves books and adds them to GetOrderResponse"""
 
-    books: list[AssocBookS] = []
+    books: list[AssocBookResponse] = []
 
     for order_detail in order_details:
         book: Book = order_detail.book
@@ -20,7 +24,7 @@ def order_assembler(order_details: list[BookOrderAssoc]) -> list[AssocBookS]:
         ]
 
         books.append(
-            AssocBookS(
+            AssocBookResponse(
                 book_id=book.id,
                 book_title=book.name,
                 authors=authors,

@@ -9,17 +9,20 @@ from ..exceptions import (
     EntityDoesNotExist,
     NotFoundError,
     RelatedEntityDoesNotExist,
-    RepositoryResolutionError,
-    ServerError,
 )
+from typing import TypeVar, ParamSpec, Awaitable
+
+P = ParamSpec("P")
+R = TypeVar("R")
 
 
-def perform_logging(func: Callable):
+def perform_logging(
+    func: Callable[P, Awaitable[R]],
+) -> Callable[P, Awaitable[R]]:
     """Applies logging scenarios for a function"""
 
     @wraps(func)
-    async def wrapper(*args, **kwargs):
-        kwargs = dict(kwargs)
+    async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         repo = kwargs.get("repo", None)
         domain_model = kwargs.get("domain_model", None)
 
@@ -33,12 +36,6 @@ def perform_logging(func: Callable):
                 logger.info("Entity wasn't found", extra=extra)
                 raise EntityDoesNotExist()
             return res
-        except (TypeError, RepositoryResolutionError) as e:
-            logger.error("Repository Resolution error", extra=extra, exc_info=True)
-            raise ServerError(
-                detail="failed to perform operation due to server error"
-            ) from e
-
         except RelatedEntityDoesNotExist as e:
             logger.debug("Related entity does not exist", exc_info=True, extra=extra)
             raise HTTPException(

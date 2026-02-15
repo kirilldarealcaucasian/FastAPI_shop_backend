@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+from collections.abc import Mapping
 from datetime import datetime
 from typing import Generator
 
@@ -24,7 +25,7 @@ async def prepare_database():
         await con.run_sync(Base.metadata.drop_all)
         await con.run_sync(Base.metadata.create_all)
 
-    def open_test_data_json(model: str) -> dict:
+    def open_test_data_json(model: str) -> Mapping:
         with open(os.path.abspath(f"tests/test_data/{model}.json"), "r", encoding="utf-8") as file:
             return json.load(file)
 
@@ -81,4 +82,3 @@ def event_loop() -> Generator:
     loop = asyncio.new_event_loop()
     yield loop
     loop.close()
-

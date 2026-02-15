@@ -6,7 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from application.models import Book, CartItem, ShoppingSession
+from ..models import Book, CartItem, ShoppingSession
 from .orm_entity_repo import OrmEntityRepoInterface, OrmEntityRepository
 from ..types import Id
 from ..exceptions import DBError, NotFoundError

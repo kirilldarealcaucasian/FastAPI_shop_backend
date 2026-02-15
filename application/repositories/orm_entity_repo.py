@@ -1,4 +1,5 @@
-from typing import Protocol, Sequence, Type
+from collections.abc import Sequence
+from typing import Protocol, Type
 from uuid import UUID
 
 from sqlalchemy import select
@@ -31,7 +32,7 @@ class OrmEntityRepoInterface[OrmModelT](Protocol):
         page: int = 0,
         limit: int = 5,
         **filters,
-    ) -> list[OrmModelT]: ...
+    ) -> Sequence[OrmModelT]: ...
 
     async def update(
         self,
@@ -82,7 +83,7 @@ class OrmEntityRepository[OrmModelT]:
         page: int = 0,
         limit: int = 5,
         **filters,
-    ) -> list[OrmModelT]:
+    ) -> Sequence[OrmModelT]:
         stmt = select(self.model).filter_by(**filters).offset(page * limit).limit(limit)
         try:
             orm_models: Sequence = (await session.scalars(stmt)).all()
@@ -96,7 +97,7 @@ class OrmEntityRepository[OrmModelT]:
         instance_id: int | UUID,
         session: AsyncSession,
     ) -> OrmModelT:
-        res: list[OrmModelT] = await self.get_all(
+        res = await self.get_all(
             session=session, id=instance_id
         )  # check existence of the entity
 
@@ -118,7 +119,7 @@ class OrmEntityRepository[OrmModelT]:
         session: AsyncSession,
         instance_id: Id,
     ) -> None:
-        data: list[OrmModelT] = await self.get_all(session=session, id=instance_id)
+        data = await self.get_all(session=session, id=instance_id)
 
         if len(data) == 0:
             raise NotFoundError(entity=self.model.__name__)

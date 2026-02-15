@@ -2,7 +2,10 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from application.cmd import app
-from application.schemas import UpdatePartiallyUserS, UpdateUserS
+from application.schemas.request.user import (
+    UpdatePartiallyUserRequest,
+    UpdateUserRequest,
+)
 
 
 @pytest.mark.asyncio
@@ -69,7 +72,7 @@ async def test_delete_user(
 )
 async def test_update_user(
         user_id: int,
-        update_data: UpdateUserS,
+        update_data: UpdateUserRequest,
         status_code: int,
         get_admin_header: str,
         ac: AsyncClient
@@ -93,7 +96,7 @@ async def test_update_user(
 )
 async def test_update_user_partially(
         user_id: int,
-        update_data: UpdatePartiallyUserS,
+        update_data: UpdatePartiallyUserRequest,
         status_code: int,
         get_admin_header: str,
         ac: AsyncClient

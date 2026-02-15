@@ -2,7 +2,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from application.cmd import app
-from application.schemas import UpdateBookS
+from application.schemas.request.book import UpdateBookRequest
 
 
 @pytest.mark.asyncio
@@ -184,7 +184,7 @@ async def test_delete_book(book_id, status_code, ac):
         ),
     ],
 )
-async def test_update_book(book_id: int | str, update_data: UpdateBookS, status_code, ac):
+async def test_update_book(book_id: int | str, update_data: UpdateBookRequest, status_code, ac):
     response = await ac.put(url=f"v1/books/{book_id}", json=update_data)
     assert response.status_code == status_code
 

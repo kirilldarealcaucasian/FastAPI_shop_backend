@@ -1,4 +1,5 @@
 from datetime import datetime
+from collections.abc import Sequence
 from typing import Protocol, Type, cast
 from uuid import UUID
 
@@ -7,12 +8,12 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from application.models import Book, CartItem, ShoppingSession
-from application.repositories.orm_entity_repo import (
+from ..models import Book, CartItem, ShoppingSession
+from .orm_entity_repo import (
     OrmEntityRepoInterface,
     OrmEntityRepository,
 )
-from application.exceptions import ConflictError, DBError, NotFoundError
+from ..exceptions import ConflictError, DBError, NotFoundError
 from infrastructure.postgres import db_client
 from ..types import Id, CartPrimaryIdentifier
 
@@ -20,13 +21,13 @@ from ..types import Id, CartPrimaryIdentifier
 class CartRepositoryInterface(Protocol):
     async def get_cart_by_session_id(
         self, session: AsyncSession, cart_session_id: UUID
-    ) -> list[CartItem]: ...
+    ) -> Sequence[CartItem]: ...
 
     async def get_cart_by_user_id(
         self,
         session: AsyncSession,
         user_id: int,
-    ) -> list[CartItem]: ...
+    ) -> Sequence[CartItem]: ...
 
     async def get_by_id(self, session: AsyncSession, id: Id) -> CartItem | None: ...
 
@@ -63,7 +64,7 @@ class CartRepository(OrmEntityRepository[CartItem]):
 
     async def get_cart_by_session_id(
         self, session: AsyncSession, cart_session_id: UUID
-    ) -> list[CartItem]:
+    ) -> Sequence[CartItem]:
 
         # load Cart with books
         stmt = (
@@ -112,7 +113,7 @@ class CartRepository(OrmEntityRepository[CartItem]):
 
     async def get_cart_by_user_id(
         self, session: AsyncSession, user_id: int
-    ) -> list[CartItem]:
+    ) -> Sequence[CartItem]:
         stmt = (
             select(CartItem)
             .join(CartItem.shopping_session)

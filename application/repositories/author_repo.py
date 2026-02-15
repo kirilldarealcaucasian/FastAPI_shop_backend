@@ -1,6 +1,6 @@
 from typing import Type
 
-from application.models import Author
+from ..models import Author
 from .orm_entity_repo import OrmEntityRepository
 
 

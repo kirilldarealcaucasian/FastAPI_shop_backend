@@ -15,8 +15,8 @@ from application.repositories.payment_detail_repo import \
 from application.repositories.shopping_session_repo import \
     ShoppingSessionRepository
 from application.repositories.user_repo import UserRepository
-from application.schemas import ReturnOrderS
-from application.schemas.domain_model_schemas import OrderS, PaymentDetailS
+from application.models import Order, PaymentDetail
+from application.schemas.response.order import GetOrderResponse
 from application.services import (BookService, CartService, OrderService,
                                   PaymentService, ShoppingSessionService,
                                   UserService)
@@ -121,7 +121,7 @@ async def test_perform_order(
     payment_id: UUID = uuid.uuid4()
 
     payment_detail_repo = PaymentDetailRepository()
-    domain_model = PaymentDetailS(
+    orm_model = PaymentDetail(
         id=payment_id,
         status="pending",
         payment_provider="yookassa",
@@ -130,7 +130,7 @@ async def test_perform_order(
 
     await payment_detail_repo.create(
         session=session,
-        domain_model=domain_model
+        orm_model=orm_model
     )  # create fake payment
 
     _ = await order_service.perform_order(
@@ -139,31 +139,23 @@ async def test_perform_order(
         status="success",
     )
 
-    payment: PaymentDetailS = await payment_service.get_by_id(
+    payment: PaymentDetail = await payment_service.get_by_id(
         repo=payment_service._payment_detail_repo,
         session=session,
         id=payment_id
     )
 
-    payment_to_pydantic: PaymentDetailS = PaymentDetailS.model_validate(
-        payment, from_attributes=True
-    )
+    assert payment.status == "success"
+    assert payment.id == payment_id
 
-    assert payment_to_pydantic == PaymentDetailS(  # check if to payments are equal
-        id=payment_id,
-        status="success",
-        payment_provider="yookassa",
-        amount=1000
-    )
-
-    order_summary: OrderS = await order_service.get_order_summary(
+    order_summary: Order = await order_service.get_order_summary(
         session=session,
-        payment_id=payment_to_pydantic.id
+        payment_id=payment.id
     )
 
     assert order_summary.total_sum == 1000
 
-    order_details: ReturnOrderS = await order_service.get_order_details_by_payment_id(
+    order_details: GetOrderResponse = await order_service.get_order_details_by_payment_id(
         session=session,
         payment_id=payment_id
     )
@@ -184,7 +176,7 @@ async def test_perform_order_with_failed_payment(
     payment_id: UUID = uuid.uuid4()
 
     payment_detail_repo = PaymentDetailRepository()
-    domain_model = PaymentDetailS(
+    orm_model = PaymentDetail(
         id=payment_id,
         status="pending",
         payment_provider="yookassa",
@@ -193,7 +185,7 @@ async def test_perform_order_with_failed_payment(
 
     await payment_detail_repo.create(
         session=session,
-        domain_model=domain_model
+        orm_model=orm_model
     )  # create fake payment
 
     with pytest.raises(PaymentFailedError) as excval:
@@ -205,7 +197,7 @@ async def test_perform_order_with_failed_payment(
 
     assert "Payment was failed." in str(excval.value)
 
-    payment: PaymentDetailS = await payment_service.get_by_id(
+    payment: PaymentDetail = await payment_service.get_by_id(
         repo=payment_service._payment_detail_repo,
         session=session,
         id=payment_id

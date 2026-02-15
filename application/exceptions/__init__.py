@@ -7,7 +7,6 @@ __all__ = (
     "EntityDoesNotExist",
     "ServerError",
     "UnauthorizedError",
-    "RepositoryResolutionError",
     "FilterError",
     "RelatedEntityDoesNotExist",
     "DomainModelConversionError",
@@ -27,19 +26,36 @@ __all__ = (
     "ConflictErrorHTTP",
 )
 
-from .domain_models_exceptions import (AddBookToOrderError,
-                                       DecrementNumberInStockError,
-                                       DeleteBooksFromOrderError)
-from .http_exceptions import (AlreadyExistsError, BadRequest,
-                              ConflictErrorHTTP, DomainModelConversionError,
-                              EntityDoesNotExist, FilterError,
-                              InvalidModelCredentials, NoCookieError,
-                              OrderingFilterError, RelatedEntityDoesNotExist,
-                              RepositoryResolutionError, ServerError,
-                              UnauthorizedError)
-from .payment_exceptions import (PaymentFailedError,
-                                 PaymentObjectCreationError,
-                                 PaymentRetrieveStatusError, RefundFailedError)
-from .storage_exceptions import (ConflictError, DBError, DeletionError,
-                                 DuplicateError, NotFoundError,
-                                 RemoteBucketDeletionError)
+from .domain_models_exceptions import (
+    AddBookToOrderError,
+    DecrementNumberInStockError,
+    DeleteBooksFromOrderError,
+)
+from .http_exceptions import (
+    AlreadyExistsError,
+    BadRequest,
+    ConflictErrorHTTP,
+    DomainModelConversionError,
+    EntityDoesNotExist,
+    FilterError,
+    InvalidModelCredentials,
+    NoCookieError,
+    OrderingFilterError,
+    RelatedEntityDoesNotExist,
+    ServerError,
+    UnauthorizedError,
+)
+from .payment_exceptions import (
+    PaymentFailedError,
+    PaymentObjectCreationError,
+    PaymentRetrieveStatusError,
+    RefundFailedError,
+)
+from .storage_exceptions import (
+    ConflictError,
+    DBError,
+    DeletionError,
+    DuplicateError,
+    NotFoundError,
+    RemoteBucketDeletionError,
+)

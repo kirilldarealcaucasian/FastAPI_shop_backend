@@ -1,73 +1,46 @@
 import asyncio
-from decimal import Decimal
-from typing import Annotated
+from dataclasses import dataclass
 from uuid import UUID
 
-from fastapi import Depends
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.models import Book, CartItem, PaymentDetail, ShoppingSession, User
-from application.repositories.cart_repo import (
-    CartRepository,
+from ..models import Book, CartItem, PaymentDetail, ShoppingSession, User
+from ..repositories.cart_repo import (
     CombinedCartRepositoryInterface,
 )
-from application.repositories.payment_detail_repo import (
+from ..repositories.payment_detail_repo import (
     CombinedPaymentDetailRepoInterface,
-    PaymentDetailRepository,
 )
-from application.repositories.shopping_session_repo import (
+from ..repositories.shopping_session_repo import (
     CombinedShoppingSessionRepositoryInterface,
-    ShoppingSessionRepository,
 )
-from application.schemas import CreatePaymentS, OrderItemS, ReturnPaymentS
-from application.schemas.domain_model_schemas import PaymentDetailS
+from ..schemas.request.order import OrderItemRequest
+from ..schemas.request.payment import CreatePaymentRequest
+from ..schemas.response.payment import CreatePaymentResponse
 from .entity_base_service import EntityBaseService
 from ..exceptions import EntityDoesNotExist, PaymentObjectCreationError, ServerError
 from infrastructure.payment.yookassa.app import (
     PaymentProviderInterface,
-    YooKassaPaymentProvider,
 )
 
-ConfirmationURL = TypeAlias = str
+type ConfirmationURL = str
 
 
+@dataclass(slots=True, frozen=True)
 class PaymentService(EntityBaseService):
-
-    def __init__(
-        self,
-        payment_provider: Annotated[
-            PaymentProviderInterface, Depends(YooKassaPaymentProvider)
-        ],
-        shopping_session_repo: Annotated[
-            CombinedShoppingSessionRepositoryInterface,
-            Depends(ShoppingSessionRepository),
-        ],
-        cart_repo: Annotated[CombinedCartRepositoryInterface, Depends(CartRepository)],
-        payment_detail_repo: Annotated[
-            CombinedPaymentDetailRepoInterface, Depends(PaymentDetailRepository)
-        ],
-    ):
-        self._payment_provider: PaymentProviderInterface = payment_provider
-        self._shopping_session_repo: CombinedShoppingSessionRepositoryInterface = (
-            shopping_session_repo
-        )
-        self._cart_repo: CombinedCartRepositoryInterface = cart_repo
-        self._payment_detail_repo: CombinedPaymentDetailRepoInterface = (
-            payment_detail_repo
-        )
+    payment_provider: PaymentProviderInterface
+    shopping_session_repo: CombinedShoppingSessionRepositoryInterface
+    cart_repo: CombinedCartRepositoryInterface
+    payment_detail_repo: CombinedPaymentDetailRepoInterface
 
     async def get_payment_by_id(
         self, session: AsyncSession, payment_id: UUID
-    ) -> PaymentDetailS:
+    ) -> PaymentDetail:
         payment: PaymentDetail = await super().get_by_id(
-            repo=self._payment_detail_repo, session=session, id=payment_id
+            repo=self.payment_detail_repo, session=session, id=payment_id
         )
-
-        payment_detail: PaymentDetailS = PaymentDetailS.model_validate(
-            payment, from_attributes=True
-        )
-        return payment_detail
+        return payment
 
     async def make_payment(self, session: AsyncSession, shopping_session_id: UUID):
         """
@@ -77,7 +50,7 @@ class PaymentService(EntityBaseService):
         asynchronously for payment status in the background
         """
         shopping_session: ShoppingSession | None = (
-            await self._shopping_session_repo.get_by_id(
+            await self.shopping_session_repo.get_by_id(
                 session=session, id=shopping_session_id
             )
         )
@@ -85,7 +58,7 @@ class PaymentService(EntityBaseService):
         if not shopping_session:
             raise EntityDoesNotExist(entity="ShoppingSession")
 
-        cart: list[CartItem] = await self._cart_repo.get_cart_by_session_id(
+        cart = await self.cart_repo.get_cart_by_session_id(
             session=session, cart_session_id=shopping_session_id
         )
 
@@ -99,14 +72,14 @@ class PaymentService(EntityBaseService):
         cart_owner: User = shopping_session.user
         cart_owner_full_name = " ".join([cart_owner.first_name, cart_owner.last_name])
 
-        order_items: list[OrderItemS] = (
+        order_items: list[OrderItemRequest] = (
             []
         )  # list of books that are going to be in the order
 
         for item in cart:
             book: Book = item.book
             order_items.append(
-                OrderItemS(
+                OrderItemRequest(
                     book_name=book.name,
                     quantity=item.quantity,
                     price=book.price_with_discount,
@@ -118,7 +91,7 @@ class PaymentService(EntityBaseService):
         )
         description = f"You're ordering: {order_item_names}"
 
-        payment_data = CreatePaymentS(
+        payment_data = CreatePaymentRequest(
             customer_full_name=cart_owner_full_name,
             customer_email=cart_owner.email,
             total_amount=shopping_session.total,
@@ -128,7 +101,7 @@ class PaymentService(EntityBaseService):
         )
 
         try:
-            payment_creds: ReturnPaymentS = self._payment_provider.create_payment(
+            payment_creds: CreatePaymentResponse = self.payment_provider.create_payment(
                 payment_data=payment_data,
             )
         except PaymentObjectCreationError:
@@ -138,7 +111,7 @@ class PaymentService(EntityBaseService):
                 It's impossible to perform payment now. Try later"""
             )
 
-        domain_model = PaymentDetailS(
+        orm_model = PaymentDetail(
             id=payment_creds.payment_id,
             status="pending",
             payment_provider="yookassa",
@@ -146,12 +119,12 @@ class PaymentService(EntityBaseService):
         )
 
         _ = await super().create(
-            repo=self._payment_detail_repo, session=session, orm_model=domain_model
+            repo=self.payment_detail_repo, session=session, orm_model=orm_model
         )  # create PaymentDetail, if sth is wrong http_exception is raised
 
         logger.debug("Starting to check payment status . . .")
         _ = asyncio.create_task(
-            self._payment_provider.check_payment_status(
+            self.payment_provider.check_payment_status(
                 shopping_session_id=shopping_session_id,
                 payment_id=payment_creds.payment_id,
                 amount=shopping_session.total,

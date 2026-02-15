@@ -10,13 +10,9 @@ from ...repositories.book_repo import CombinedBookRepoInterface
 from ...repositories.cart_repo import (
     CombinedCartRepositoryInterface,
 )
-from ...schemas import (
-    AddBookToCartS,
-    CreateShoppingSessionS,
-    DeleteBookFromCartS,
-    ReturnCartS,
-)
-from ...schemas.domain_model_schemas import BookS
+from ...schemas.request.cart import AddBookToCartRequest, DeleteBookFromCartRequest
+from ...schemas.request.shopping_session import CreateShoppingSessionRequest
+from ...schemas.response.cart import GetCartResponse
 from ...services import BookService, ShoppingSessionService, UserService
 from .cart_assembler import assemble_cart
 from ...services.entity_base_service import EntityBaseService
@@ -48,7 +44,7 @@ class CartService(EntityBaseService):
         self,
         session: AsyncSession,
         shopping_session_id: uuid_UUID,
-    ) -> ReturnCartS:
+    ) -> GetCartResponse:
         try:
             cart: list[CartItem] = await self.cart_repo.get_cart_by_session_id(
                 session=session,
@@ -59,7 +55,7 @@ class CartService(EntityBaseService):
                 raise EntityDoesNotExist(e.entity) from e
             raise ServerError() from e
 
-        assembled_cart: ReturnCartS | None = assemble_cart(cart)  # converts data into
+        assembled_cart: GetCartResponse | None = assemble_cart(cart)  # converts data into
         if assembled_cart is None:
             logger.bind(shopping_session_id=shopping_session_id).error(
                 "failed to get cart by session id: failed to assemble cart"
@@ -70,7 +66,7 @@ class CartService(EntityBaseService):
 
     async def get_cart_by_user_id(
         self, session: AsyncSession, user_id: int
-    ) -> ReturnCartS:
+    ) -> GetCartResponse:
         cart: list[CartItem] = []
         _ = await self.user_service.get_user_by_id(session=session, id=user_id)
 
@@ -82,7 +78,7 @@ class CartService(EntityBaseService):
             if isinstance(e, NotFoundError):
                 raise EntityDoesNotExist("Cart") from e
             raise ServerError() from e
-        assembled_cart: ReturnCartS | None = assemble_cart(cart)
+        assembled_cart: GetCartResponse | None = assemble_cart(cart)
         if assembled_cart is None:
             logger.bind(user_id=user_id).error(
                 "failed to get cart by user id: failed to assemble cart"
@@ -108,7 +104,7 @@ class CartService(EntityBaseService):
 
         shopping_session_id = (
             await self.shopping_session_service.create_shopping_session(
-                session=session, dto=CreateShoppingSessionS(user_id=user_id, total=0.0)
+                session=session, dto=CreateShoppingSessionRequest(user_id=user_id, total=0.0)
             )
         )
 
@@ -144,16 +140,15 @@ class CartService(EntityBaseService):
         self,
         session: AsyncSession,
         shopping_session_id: uuid_UUID,
-        dto: AddBookToCartS,
-    ) -> ReturnCartS:
+        dto: AddBookToCartRequest,
+    ) -> GetCartResponse:
         """Adds a book to the cart / increments the amount of books in a cart"""
         book: Book = await self.book_repo.get_by_id(session=session, id=dto.book_id)
 
         if not book:
             raise EntityDoesNotExist(entity="Book")
 
-        book_domain_model: BookS = BookS.model_validate(book, from_attributes=True)
-        if not book_domain_model.is_enough_in_stock(dto.quantity):
+        if book.number_in_stock < dto.quantity:
             raise BadRequest(
                 detail=f"You're trying to order too many books, only \
                     {book.number_in_stock} left in stock"
@@ -166,7 +161,7 @@ class CartService(EntityBaseService):
             quantity=dto.quantity,
         )
 
-        updated_cart: ReturnCartS = await self.get_cart_by_session_id(
+        updated_cart: GetCartResponse = await self.get_cart_by_session_id(
             session=session, shopping_session_id=shopping_session_id
         )
 
@@ -175,9 +170,9 @@ class CartService(EntityBaseService):
     async def delete_book_from_cart(
         self,
         session: AsyncSession,
-        deletion_data: DeleteBookFromCartS,
+        deletion_data: DeleteBookFromCartRequest,
         shopping_session_id: uuid_UUID,
-    ) -> ReturnCartS:
+    ) -> GetCartResponse:
         """Deletes a book from the cart / decrements the amount of books in a cart"""
         book: Book | None = await self.book_repo.get_by_id(
             session=session, id=deletion_data.book_id
@@ -231,7 +226,7 @@ class CartService(EntityBaseService):
             quantity=deletion_data.quantity,
         ).info("deleted book(s) from cart")
 
-        updated_cart: ReturnCartS = await self.get_cart_by_session_id(
+        updated_cart: GetCartResponse = await self.get_cart_by_session_id(
             session=session, shopping_session_id=shopping_session_id
         )
 

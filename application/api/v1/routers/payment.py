@@ -3,7 +3,8 @@ from uuid import UUID
 from fastapi import APIRouter, Cookie, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.services import PaymentService
+from ....services import PaymentService
+from ....service_providers.payment import get_payment_service
 from auth.services.permission_service import PermissionService
 from infrastructure.postgres import db_client
 
@@ -21,7 +22,7 @@ router = APIRouter(prefix="/checkout", tags=["Checkout"])
 )
 async def make_payment(
     shopping_session_id: UUID = Cookie(),
-    service: PaymentService = Depends(PaymentService),
+    service: PaymentService = Depends(get_payment_service),
     session: AsyncSession = Depends(db_client.get_scoped_session_dependency),
 ):
     return await service.make_payment(

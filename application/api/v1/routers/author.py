@@ -11,7 +11,7 @@ from ....schemas.request.author import (
     UpdateAuthorRequest,
     UpdatePartiallyAuthorRequest,
 )
-from application.services import AuthorService
+from ....services import AuthorService
 from auth.services.permission_service import PermissionService
 from ....utils.cache import cachify
 from infrastructure.postgres import db_client

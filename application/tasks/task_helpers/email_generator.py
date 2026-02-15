@@ -1,6 +1,6 @@
 from email.message import EmailMessage
 
-from application.tasks.email_config.email_config import email_settings
+from ..email_config.email_config import email_settings
 
 
 def create_order_confirmation_template(

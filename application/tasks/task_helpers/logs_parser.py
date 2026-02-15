@@ -1,7 +1,7 @@
 import json
 from time import mktime, strptime
 
-from core.config import settings
+from ...settings import settings
 
 
 def parse_logs_journal() -> bytes:

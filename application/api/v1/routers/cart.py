@@ -5,7 +5,8 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.requests import Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from ....schemas import AddBookToCartS, DeleteBookFromCartS, ReturnCartS
+from ....schemas.request.cart import AddBookToCartRequest, DeleteBookFromCartRequest
+from ....schemas.response.cart import GetCartResponse
 from ....services.cart_service.cart_service import CartService
 from auth.helpers import get_token_payload
 from auth.services.permission_service import PermissionService
@@ -37,7 +38,7 @@ custom_security = CustomSecurity()
     "/",
     status_code=status.HTTP_200_OK,
     dependencies=[Depends(PermissionService().get_cart_permission)],
-    response_model=ReturnCartS,
+    response_model=GetCartResponse,
 )
 async def get_cart_by_session_id(
     shopping_session_id: Optional[UUID] = Cookie(None),
@@ -55,7 +56,7 @@ async def get_cart_by_session_id(
     "/users/{user_id}",
     status_code=status.HTTP_200_OK,
     dependencies=[Depends(PermissionService().get_cart_permission_for_user)],
-    response_model=ReturnCartS,
+    response_model=GetCartResponse,
 )
 async def get_cart_by_user_id(
     user_id: int,
@@ -77,7 +78,7 @@ async def create_cart(
 ):
     if not credentials:
         raise ForbiddenError()
-    token_payload: dict = get_token_payload(credentials=credentials)
+    token_payload = get_token_payload(credentials=credentials)
     user_id: int | None = token_payload.get("user_id", None)
     if user_id is None:
         raise ForbiddenError()
@@ -103,7 +104,7 @@ async def delete_cart(
     status_code=status.HTTP_200_OK,
 )
 async def add_book_to_cart(
-    data: AddBookToCartS,
+    data: AddBookToCartRequest,
     shopping_session_id: UUID = Cookie(None),
     service: CartService = Depends(get_cart_service),
     session: AsyncSession = Depends(db_client.get_scoped_session_dependency),
@@ -119,11 +120,11 @@ async def add_book_to_cart(
     dependencies=[Depends(PermissionService().get_cart_permission)],
 )
 async def delete_book_from_cart(
-    deletion_data: DeleteBookFromCartS,
+    deletion_data: DeleteBookFromCartRequest,
     shopping_session_id: UUID = Cookie(None),
     service: CartService = Depends(get_cart_service),
     session: AsyncSession = Depends(db_client.get_scoped_session_dependency),
-) -> ReturnCartS:
+) -> GetCartResponse:
     return await service.delete_book_from_cart(
         session=session,
         deletion_data=deletion_data,

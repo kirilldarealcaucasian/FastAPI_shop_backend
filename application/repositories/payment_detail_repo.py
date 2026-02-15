@@ -5,10 +5,9 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.models.models import PaymentDetail
-from core import OrmEntityRepository
-from core.base_repos import OrmEntityRepoInterface
-from core.exceptions import DBError, NotFoundError
+from ..models import PaymentDetail
+from .orm_entity_repo import OrmEntityRepoInterface, OrmEntityRepository
+from ..exceptions import DBError, NotFoundError
 
 
 class PaymentDetailRepoInterface(Protocol):

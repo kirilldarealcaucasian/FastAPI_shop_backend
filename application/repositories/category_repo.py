@@ -1,7 +1,7 @@
 from typing import Type
 
-from application.models import Category
-from core import OrmEntityRepository
+from ..models import Category
+from .orm_entity_repo import OrmEntityRepository
 
 
 class CategoryRepository(OrmEntityRepository):
