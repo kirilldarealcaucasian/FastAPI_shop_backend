@@ -5,13 +5,13 @@ import os
 from typing import Union, MutableMapping, Any, Mapping
 
 import uvicorn
-from aioredis import Redis
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from infrastructure.postgres import db_client
 from loguru import logger
+from redis.asyncio import Redis
 
 from .api.v1 import (
     author_router,

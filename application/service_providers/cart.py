@@ -10,7 +10,7 @@ from ..services.book_service import BookService
 from .shopping_session import get_shopping_session_service
 from .book import get_book_service
 from .user import get_user_service
-from ...infrastructure.redis import redis_client
+from infrastructure.redis import redis_client
 
 
 def get_cart_service(

@@ -13,7 +13,7 @@ from ....schemas.response.book import (
     GetBookResponse,
     UpdateBookResponse,
 )
-from ....services import BookService
+from ....services.book_service import BookService
 from ....service_providers.book import get_book_service
 from ....services.utils.filters import BookFilter, Pagination
 from ....utils.cache import cachify

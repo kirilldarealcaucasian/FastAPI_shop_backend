@@ -6,12 +6,17 @@ from sqlalchemy import select
 from sqlalchemy.exc import DBAPIError, NoSuchTableError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from application.exceptions import (
+    DBError,
+    DuplicateError,
+    NotFoundError,
+    ServerError,
+    UnauthorizedError,
+)
 from application.models import User
 from application.schemas.response.user import GetUserResponse
 from .. import helpers
 from ..schemas.token_schema import TokenPayload
-from core.exceptions import (DBError, DuplicateError, NotFoundError,
-                             ServerError, UnauthorizedError)
 
 TokenDataT = TypeVar("TokenDataT")
 

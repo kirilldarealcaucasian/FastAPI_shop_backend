@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ....schemas.request.category import CreateCategoryRequest, UpdateCategoryRequest
 from ....schemas.response.category import GetCategoryResponse
 from ....service_providers.category import get_category_service
-from ....services import CategoryService
+from ....services.category_service import CategoryService
 from auth.services.permission_service import PermissionService
 from ....utils.cache import cachify
 from infrastructure.postgres import db_client

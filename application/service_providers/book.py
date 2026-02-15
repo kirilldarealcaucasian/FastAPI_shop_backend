@@ -1,7 +1,7 @@
 from typing import Annotated
 from fastapi import Depends
-from ..services import BookService
 from ..repositories.book_repo import BookRepository, CombinedBookRepoInterface
+from ..services.book_service import BookService
 
 
 def get_book_service(

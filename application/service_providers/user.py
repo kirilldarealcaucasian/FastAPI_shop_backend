@@ -1,8 +1,8 @@
 from typing import Annotated
 from fastapi import Depends
-from ..services import UserService
 from ..repositories.user_repo import UserRepository, CombinedUserInterface
 from ..repositories.order_repo import OrderRepository, CombinedOrderRepositoryInterface
+from ..services.user_service import UserService
 
 
 def get_user_service(

@@ -28,11 +28,11 @@ class Settings(BaseSettings):
     TEST_POSTGRES_PORT: int
     TEST_POSTGRES_DB: str
 
-    LOCAL_POSTGRES_USER: str
-    LOCAL_POSTGRES_PASSWORD: str
-    LOCAL_POSTGRES_SERVER: str
-    LOCAL_POSTGRES_PORT: int
-    LOCAL_POSTGRES_DB: str
+    LOCAL_POSTGRES_USER: str = "postgres"
+    LOCAL_POSTGRES_PASSWORD: str = "postgres"
+    LOCAL_POSTGRES_SERVER: str = "localhost"
+    LOCAL_POSTGRES_PORT: int = 5432
+    LOCAL_POSTGRES_DB: str = "shop_local"
 
     REDIS_HOST: str
     REDIS_PORT: int
@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     SHOPPING_SESSION_DURATION: str
     SHOPPING_SESSION_COOKIE_NAME: str
 
-    YOOCASSA_ACCOUNT_ID: int
+    YOOCASSA_ACCOUNT_ID: str = "1"
     YOOCASSA_SECRET_KEY: str
 
     @property

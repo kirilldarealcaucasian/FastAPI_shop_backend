@@ -5,8 +5,8 @@ from functools import wraps
 from typing import Callable, Union
 from uuid import UUID
 
-from aioredis import Redis
 from pydantic import TypeAdapter
+from redis.asyncio import Redis
 
 __all__ = ("cachify",)
 
@@ -20,8 +20,8 @@ def cachify(instance_return_schema, cache_time: timedelta | int) -> Callable:
 
     def decorator(func: Callable):
         @wraps(func)
-        async def wrapper(*args, **kwargs) -> Sequence[instance_return_schema]:
-            redis: Redis = await redis_client.connect()
+        async def wrapper(*args, **kwargs) -> Sequence:
+            redis: Redis | None = await redis_client.connect()
 
             if not redis:
                 logger.info(f"No caching for {func.__name__} as no connection to redis")

@@ -16,7 +16,7 @@ from ..repositories.shopping_session_repo import (
     CombinedShoppingSessionRepositoryInterface,
     ShoppingSessionRepository,
 )
-from ..services import PaymentService
+from ..services.payment_service import PaymentService
 
 
 def get_payment_service(

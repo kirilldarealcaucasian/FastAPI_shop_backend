@@ -5,13 +5,17 @@ from fastapi.params import Cookie
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from application.exceptions import NoCookieError, UnauthorizedError
+from application.service_providers.cart import get_cart_service
+from application.service_providers.shopping_session import get_shopping_session_service
+from application.service_providers.user import get_user_service
 from application.schemas.response.shopping_session import GetShoppingSessionResponse
 from application.schemas.response.user import GetUserResponse
-from application.services import (CartService, ShoppingSessionService,
-                                  UserService)
+from application.services.cart_service.cart_service import CartService
+from application.services.shopping_session_service import ShoppingSessionService
+from application.services.user_service import UserService
 from ..helpers import get_token_payload
 from ..repositories import AuthRepository
-from core.exceptions import NoCookieError, UnauthorizedError
 from infrastructure.postgres import db_client
 
 
@@ -32,7 +36,7 @@ class PermissionService(AuthRepository):
     async def get_order_permission(
             self,
             order_id: int,
-            user_service: UserService = Depends(),
+            user_service: UserService = Depends(get_user_service),
             credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer()),
             session: AsyncSession = Depends(db_client.get_scoped_session_dependency)
     ) -> int:
@@ -63,7 +67,7 @@ class PermissionService(AuthRepository):
             self,
             shopping_session_id: UUID = Cookie(None),
             session: AsyncSession = Depends(db_client.get_scoped_session_dependency),
-            shopping_session_service: ShoppingSessionService = Depends(),
+            shopping_session_service: ShoppingSessionService = Depends(get_shopping_session_service),
     ) -> UUID:
         if not shopping_session_id:
             raise NoCookieError("No shopping_session_id in the cookie")
@@ -81,7 +85,7 @@ class PermissionService(AuthRepository):
             self,
             user_id: int,
             credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer()),
-            user_service: UserService = Depends(),
+            user_service: UserService = Depends(get_user_service),
             session: AsyncSession = Depends(db_client.get_scoped_session_dependency)
     ):
         payload: dict = get_token_payload(credentials=credentials)
@@ -98,8 +102,8 @@ class PermissionService(AuthRepository):
             self,
             shopping_session_id: UUID = Cookie(None),
             credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer()),
-            user_service: UserService = Depends(),
-            cart_service: CartService = Depends(),
+            user_service: UserService = Depends(get_user_service),
+            cart_service: CartService = Depends(get_cart_service),
             session: AsyncSession = Depends(db_client.get_scoped_session_dependency)
     ):
         payload: dict = get_token_payload(credentials=credentials)

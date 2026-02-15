@@ -14,6 +14,7 @@ convention = {
 
 class BaseWithoutId(DeclarativeBase):
     __abstract__ = True
+    __allow_unmapped__ = True
 
     metadata = MetaData(naming_convention=convention, schema=settings.DB_SCHEMA)
     type_annotation_map = {int: BIGINT, float: Double}

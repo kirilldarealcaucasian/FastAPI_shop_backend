@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Cookie, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ....services import PaymentService
+from ....services.payment_service import PaymentService
 from ....service_providers.payment import get_payment_service
 from auth.services.permission_service import PermissionService
 from infrastructure.postgres import db_client

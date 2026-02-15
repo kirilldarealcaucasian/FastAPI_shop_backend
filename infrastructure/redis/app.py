@@ -1,7 +1,8 @@
-from aioredis import Redis, RedisError, from_url
 from loguru import logger
+from redis.asyncio import Redis, from_url
+from redis.exceptions import RedisError
 
-from ...application.settings import settings
+from application.settings import settings
 
 
 class RedisConnector:
@@ -35,7 +36,7 @@ class RedisConnector:
         if self.__connection:
             return self.__connection
 
-        redis_con = await from_url(
+        redis_con = from_url(
             f"redis://{self.host}:{self.port}", decode_responses=True
         )
         try:
@@ -44,7 +45,7 @@ class RedisConnector:
                 # exception scenario took action
             self.reconnect_retrials -= 1
             pong = await redis_con.ping()
-            if pong == b"PONG":
+            if pong:
                 logger.info(
                     f"Successful connection to redis on redis://{self.host}:{self.port}"
                 )
@@ -62,7 +63,7 @@ class RedisConnector:
     async def disconnect(self) -> None:
         """Closes connection to redis-server"""
         if self.__connection:
-            await self.__connection.close()
+            await self.__connection.aclose()
             self.__connection = None
             logger.info(
                 f"Connection to redis on redis://{self.host}:{self.port} has been closed"

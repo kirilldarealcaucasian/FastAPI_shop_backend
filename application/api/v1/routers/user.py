@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ....schemas.request.user import UpdatePartiallyUserRequest, UpdateUserRequest
 from ....schemas.response.user import GetUserResponse, GetUserWithOrdersResponse
 from ....schemas.filters import PaginationS
-from ....services import UserService
+from ....services.user_service import UserService
 from ....service_providers.user import get_user_service
 from auth.services.permission_service import PermissionService
 from ....utils.cache import cachify

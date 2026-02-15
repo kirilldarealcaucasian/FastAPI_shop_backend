@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from ...application.settings import settings
+from application.settings import settings
 from loguru import logger
 
 
@@ -51,7 +51,7 @@ class PostgresClient:
         else:
             logger.warning("Attempted to disconnect from db, but no connection found.")
 
-    async def get_async_session(self) -> AsyncGenerator[AsyncSession]:
+    async def get_async_session(self) -> AsyncGenerator[AsyncSession, None]:
         if not self.async_session:
             raise RuntimeError(
                 "PostgresClient is not connected. Call connect() before using."

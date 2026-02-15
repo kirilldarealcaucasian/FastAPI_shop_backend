@@ -11,7 +11,8 @@ from ....schemas.request.order import (
 )
 from ....schemas.response.order import GetOrderResponse, GetShortOrderResponse
 from ....schemas.filters import PaginationS
-from ....services import OrderService
+from ....service_providers.order import get_order_service
+from ....services.order_service.order_service import OrderService
 from auth.services.permission_service import PermissionService
 from ....utils.cache import cachify
 from infrastructure.postgres import db_client
@@ -23,7 +24,7 @@ router = APIRouter(prefix="/orders", tags=["Orders"])
     "", status_code=status.HTTP_200_OK, response_model=list[GetShortOrderResponse]
 )
 async def get_all_orders(
-    service: OrderService = Depends(),
+    service: OrderService = Depends(get_order_service),
     session: AsyncSession = Depends(db_client.get_scoped_session_dependency),
     pagination: PaginationS = Depends(),
 ):
@@ -42,7 +43,7 @@ async def get_all_orders(
 )
 async def get_order_by_id(
     order_id: int,
-    service: OrderService = Depends(),
+    service: OrderService = Depends(get_order_service),
     session: AsyncSession = Depends(db_client.get_scoped_session_dependency),
 ):
     return await service.get_order_by_id(session=session, order_id=order_id)
@@ -55,7 +56,7 @@ async def get_order_by_id(
 )
 async def get_order_by_user_id(
     user_id: int,
-    service: OrderService = Depends(),
+    service: OrderService = Depends(get_order_service),
     session: AsyncSession = Depends(db_client.get_scoped_session_dependency),
 ):
     return await service.get_orders_by_user_id(session=session, user_id=user_id)
@@ -64,7 +65,7 @@ async def get_order_by_user_id(
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_order(
     data: CreateOrderRequest,
-    service: OrderService = Depends(),
+    service: OrderService = Depends(get_order_service),
     session: AsyncSession = Depends(db_client.get_scoped_session_dependency),
 ):
     return await service.create_order(session=session, dto=data)
@@ -78,7 +79,7 @@ async def create_order(
 )
 async def delete_order(
     order_id: int,
-    service: OrderService = Depends(),
+    service: OrderService = Depends(get_order_service),
     session: AsyncSession = Depends(db_client.get_scoped_session_dependency),
 ):
     return await service.delete_order(session=session, order_id=order_id)
@@ -93,7 +94,7 @@ async def delete_order(
 async def add_book_to_order(
     order_id: int,
     data: AddBookToOrderRequest,
-    service: OrderService = Depends(),
+    service: OrderService = Depends(get_order_service),
     session: AsyncSession = Depends(db_client.get_scoped_session_dependency),
 ):
     return await service.add_book_to_order(order_id=order_id, session=session, dto=data)
@@ -108,7 +109,7 @@ async def delete_book_from_order(
     order_id: int,
     book_id: UUID,
     session: AsyncSession = Depends(db_client.get_scoped_session_dependency),
-    service: OrderService = Depends(),
+    service: OrderService = Depends(get_order_service),
 ):
     return await service.delete_book_from_order(
         session=session, book_id=book_id, order_id=order_id
@@ -121,7 +122,7 @@ async def delete_book_from_order(
 async def update_order(
     order_id: int,
     update_data: UpdatePartiallyOrderRequest,
-    service: OrderService = Depends(),
+    service: OrderService = Depends(get_order_service),
     session: AsyncSession = Depends(db_client.get_scoped_session_dependency),
 ):
     return await service.update_order(

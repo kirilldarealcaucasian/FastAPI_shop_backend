@@ -8,12 +8,16 @@ from application.schemas.response.user import (
     AuthenticatedUserResponse,
     GetUserResponse,
 )
+from application.exceptions import (
+    AlreadyExistsError,
+    DuplicateError,
+    NotFoundError,
+    UnauthorizedError,
+)
 from .. import helpers
 from ..helpers import get_token_payload, validate_token
 from ..repositories import AuthRepository
 from ..schemas.token_schema import AuthResponse, TokenPayload
-from core.exceptions import (AlreadyExistsError, DuplicateError, NotFoundError,
-                             UnauthorizedError)
 
 
 class AuthService:
@@ -36,7 +40,7 @@ class AuthService:
             )
             return user
         except DuplicateError as e:
-            if type(e) == DuplicateError:
+            if isinstance(e, DuplicateError):
                 raise AlreadyExistsError(entity="User")
 
     async def authorize_user(

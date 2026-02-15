@@ -1,8 +1,9 @@
 from uuid import UUID as uuid_UUID  # noqa
 
-from aioredis import Redis, RedisError
 from fastapi.responses import JSONResponse
 from loguru import logger
+from redis.asyncio import Redis
+from redis.exceptions import RedisError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...models import Book, CartItem
@@ -13,9 +14,11 @@ from ...repositories.cart_repo import (
 from ...schemas.request.cart import AddBookToCartRequest, DeleteBookFromCartRequest
 from ...schemas.request.shopping_session import CreateShoppingSessionRequest
 from ...schemas.response.cart import GetCartResponse
-from ...services import BookService, ShoppingSessionService, UserService
+from ...services.book_service import BookService
 from .cart_assembler import assemble_cart
 from ...services.entity_base_service import EntityBaseService
+from ...services.shopping_session_service import ShoppingSessionService
+from ...services.user_service import UserService
 from ...settings import settings
 from ...exceptions import (
     AlreadyExistsError,

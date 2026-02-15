@@ -4,8 +4,9 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import DateTime, Index, ForeignKey
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from .base import BaseWithoutId
 from .mixins import TimestampMixin
 
 if TYPE_CHECKING:
@@ -13,7 +14,7 @@ if TYPE_CHECKING:
     from .user import User
 
 
-class ShoppingSession(DeclarativeBase, TimestampMixin):
+class ShoppingSession(BaseWithoutId, TimestampMixin):
     __tablename__ = "shopping_sessions"  # type: ignore
 
     __table_args__ = (Index("ix_shopping_sessions", "expiration_time"),)

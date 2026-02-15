@@ -36,13 +36,12 @@ from ...schemas.response.order import (
     GetShortOrderResponse,
 )
 from ...schemas.response.cart import GetCartResponse
+from ...schemas.response.shopping_session import GetShoppingSessionResponse
 from ...schemas.filters import PaginationS
-from ...services import (
-    BookService,
-    CartService,
-    ShoppingSessionService,
-    UserService,
-)
+from ...services.book_service import BookService
+from ...services.cart_service.cart_service import CartService
+from ...services.shopping_session_service import ShoppingSessionService
+from ...services.user_service import UserService
 from ...services.order_service.utils import order_assembler
 from ...services.utils.filters import Pagination
 from ...types import BookOrderPrimaryIdentifier
@@ -342,7 +341,7 @@ class OrderService(EntityBaseService):
                     )
                 )
             except (NotFoundError, DBError) as e:
-                if type(e) == NotFoundError:
+                if isinstance(e, NotFoundError):
                     raise EntityDoesNotExist("Payment object")
                 raise ServerError("failed to create order")
 

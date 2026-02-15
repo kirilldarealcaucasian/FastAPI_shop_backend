@@ -8,14 +8,15 @@ from fastapi import Depends
 from yookassa import Configuration, Payment, Refund
 
 from application.schemas import CreatePaymentRequest, CreatePaymentResponse
-from ....application.settings import settings
+from application.settings import settings
 
 __all__ = ("PaymentProviderInterface", "YooKassaPaymentProvider")
 
 from loguru import logger
 
+from application.service_providers.order import get_order_service
 from application.services.order_service.order_service import OrderService
-from ....application.exceptions import (
+from application.exceptions import (
     PaymentFailedError,
     PaymentObjectCreationError,
     PaymentRetrieveStatusError,
@@ -44,7 +45,9 @@ class PaymentProviderInterface(Protocol):
 class YooKassaPaymentProvider:
     """Interacts with external payment api"""
 
-    def __init__(self, order_service: Annotated[OrderService, Depends(OrderService)]):
+    def __init__(
+        self, order_service: Annotated[OrderService, Depends(get_order_service)]
+    ):
         self._order_service = order_service
 
     Configuration.account_id = settings.YOOCASSA_ACCOUNT_ID

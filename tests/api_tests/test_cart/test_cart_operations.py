@@ -3,7 +3,7 @@ from httpx import ASGITransport, AsyncClient, Request
 from pytest import fail
 
 from application.cmd import app
-from core.config import settings
+from application.settings import settings
 
 
 @pytest.mark.asyncio

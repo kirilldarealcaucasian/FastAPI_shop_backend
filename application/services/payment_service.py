@@ -5,7 +5,7 @@ from uuid import UUID
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models import Book, CartItem, PaymentDetail, ShoppingSession, User
+from ..models import Book, PaymentDetail, ShoppingSession, User
 from ..repositories.cart_repo import (
     CombinedCartRepositoryInterface,
 )
