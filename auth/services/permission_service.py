@@ -1,119 +1,20 @@
-from uuid import UUID
-
 from fastapi import Depends
-from fastapi.params import Cookie
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.exceptions import NoCookieError, UnauthorizedError
-from application.service_providers.cart import get_cart_service
-from application.service_providers.shopping_session import get_shopping_session_service
-from application.service_providers.user import get_user_service
-from application.schemas.response.shopping_session import GetShoppingSessionResponse
-from application.schemas.response.user import GetUserResponse
-from application.services.cart_service.cart_service import CartService
-from application.services.shopping_session_service import ShoppingSessionService
-from application.services.user_service import UserService
-from ..helpers import get_token_payload
-from ..repositories import AuthRepository
-from infrastructure.postgres import db_client
+from auth.exceptions import UnauthorizedError
+from auth.helpers import get_token_payload
 
 
-class PermissionService(AuthRepository):
-
+class PermissionService:
     @staticmethod
     def get_admin_permission(
-            credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer())
-    ):
+        credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer()),
+    ) -> bool:
         payload = get_token_payload(credentials=credentials)
 
-        if not payload["role"] == "admin":
+        if payload.get("role") != "admin":
             raise UnauthorizedError(
                 detail="You don't have permission to perform this action"
             )
+
         return True
-
-    async def get_order_permission(
-            self,
-            order_id: int,
-            user_service: UserService = Depends(get_user_service),
-            credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer()),
-            session: AsyncSession = Depends(db_client.get_scoped_session_dependency)
-    ) -> int:
-        payload: dict = get_token_payload(credentials=credentials)
-        user_id = payload["user_id"]
-
-        if not user_id:
-            raise UnauthorizedError(detail="You are not allowed to perform this operation")
-
-        try:
-            user: GetUserResponse = await user_service.get_user_by_order_id(
-                session=session,
-                order_id=order_id
-            )  # if user is not owner of the order, http exception will be raised
-
-        except IndexError:
-            raise UnauthorizedError(
-                detail="You don't have permission to access this data"
-            )
-
-        if user.id != user_id and not payload["role"] == "admin":
-            raise UnauthorizedError(
-                detail="You don't have permission to perform this action"
-            )
-        return user_id
-
-    async def get_cart_permission(
-            self,
-            shopping_session_id: UUID = Cookie(None),
-            session: AsyncSession = Depends(db_client.get_scoped_session_dependency),
-            shopping_session_service: ShoppingSessionService = Depends(get_shopping_session_service),
-    ) -> UUID:
-        if not shopping_session_id:
-            raise NoCookieError("No shopping_session_id in the cookie")
-
-        shopping_session: GetShoppingSessionResponse = await shopping_session_service.get_shopping_session_by_id(
-            session=session,
-            id=shopping_session_id
-        )
-
-        if shopping_session:
-            return shopping_session_id
-        return None
-
-    async def get_cart_permission_for_user(
-            self,
-            user_id: int,
-            credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer()),
-            user_service: UserService = Depends(get_user_service),
-            session: AsyncSession = Depends(db_client.get_scoped_session_dependency)
-    ):
-        payload: dict = get_token_payload(credentials=credentials)
-        token_user_id = payload["user_id"]
-        if user_id != token_user_id:
-            raise UnauthorizedError(
-                detail="You are not allowed to access this cart"
-            )
-
-        _ = await user_service.get_user_by_id(session=session, id=user_id)  # if no user,  exception
-        # will be raised by user_service
-
-    async def get_authorized_permission(
-            self,
-            shopping_session_id: UUID = Cookie(None),
-            credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer()),
-            user_service: UserService = Depends(get_user_service),
-            cart_service: CartService = Depends(get_cart_service),
-            session: AsyncSession = Depends(db_client.get_scoped_session_dependency)
-    ):
-        payload: dict = get_token_payload(credentials=credentials)
-        user_id = payload["user_id"]
-        _ = await user_service.get_user_by_id(session=session, id=user_id)  # if no user, exception
-        # will be raised by user_service
-
-        """Checks if the user is logged in"""
-        if shopping_session_id:
-            await cart_service.get_cart_by_user_id(
-                session=session,
-                user_id=user_id
-            )  # if cart exists, check that this user is an owner of this cart

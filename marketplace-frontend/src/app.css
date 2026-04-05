@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+/* your custom css AFTER */
+:root{ --bg:255 255 255; --fg:15 23 42; --muted:100 116 139; }
+.dark{ --bg:2 6 23; --fg:226 232 240; --muted:148 163 184; }
+.body-bg{ background-color: rgb(var(--bg)); }
+.body-fg{ color: rgb(var(--fg)); }
+.muted{ color: rgb(var(--muted)); }

@@ -13,3 +13,21 @@ TODO.txt
 ./check.py
 ./application/services/storage/s3_storage/.env
 AGENTS.md
+
+# marketplace-frontend
+/marketplace-frontend/node_modules/
+/marketplace-frontend/.svelte-kit/
+/marketplace-frontend/build/
+/marketplace-frontend/.output/
+/marketplace-frontend/.vercel/
+/marketplace-frontend/.netlify/
+/marketplace-frontend/.wrangler/
+/marketplace-frontend/.env
+/marketplace-frontend/.env.*
+/marketplace-frontend/.vscode
+!/marketplace-frontend/.env.example
+!/marketplace-frontend/.env.test
+/marketplace-frontend/vite.config.js.timestamp-*
+/marketplace-frontend/vite.config.ts.timestamp-*
+/marketplace-backend/scripts/books.csv
+/marketplace-backend/scripts/prices.csv

@@ -1,0 +1,25 @@
+[project]
+name = "event-saver"
+version = "0.1.0"
+description = "Consumes events from Kafka and saves them to interaction_events table"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "aiokafka>=0.12.0,<0.13.0",
+    "asyncpg==0.29.0",
+    "pydantic>=2.8.0,<3.0.0",
+    "pydantic-settings>=2.3.4,<3.0.0",
+    "python-dotenv>=1.0.1,<2.0.0",
+    "loguru>=0.7.3,<0.8.0",
+    "shared-lib",
+]
+
+[tool.uv.sources]
+shared-lib = { workspace = true }
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["event_saver"]

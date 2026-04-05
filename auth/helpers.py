@@ -7,7 +7,7 @@ from bcrypt import checkpw, hashpw
 from fastapi import HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials
 
-from application.exceptions import UnauthorizedError
+from auth.exceptions import UnauthorizedError
 from .config.auth_config import auth_conf
 from .schemas import Token, TokenPayload
 

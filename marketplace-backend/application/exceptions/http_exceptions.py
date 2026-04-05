@@ -1,0 +1,31 @@
+from shared_lib.exceptions import (
+    AlreadyExistsError,
+    BadRequest,
+    ConflictErrorHTTP,
+    DomainModelConversionError,
+    EntityDoesNotExist,
+    FilterError,
+    ForbiddenError,
+    InvalidModelCredentials,
+    NoCookieError,
+    OrderingFilterError,
+    RelatedEntityDoesNotExist,
+    ServerError,
+    UnauthorizedError,
+)
+
+__all__ = (
+    "AlreadyExistsError",
+    "RelatedEntityDoesNotExist",
+    "ServerError",
+    "EntityDoesNotExist",
+    "UnauthorizedError",
+    "InvalidModelCredentials",
+    "FilterError",
+    "BadRequest",
+    "OrderingFilterError",
+    "DomainModelConversionError",
+    "NoCookieError",
+    "ConflictErrorHTTP",
+    "ForbiddenError",
+)

@@ -1,102 +1,176 @@
-from collections.abc import Mapping
-from typing import TypeVar
+import re
+from dataclasses import dataclass
+from datetime import date
+from typing import Any, MutableMapping
 
+import asyncpg
+from asyncpg import PostgresError, UniqueViolationError
 from loguru import logger
-from sqlalchemy import select
-from sqlalchemy.exc import DBAPIError, NoSuchTableError
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.exceptions import (
-    DBError,
-    DuplicateError,
-    NotFoundError,
-    ServerError,
-    UnauthorizedError,
-)
-from application.models import User
-from application.schemas.response.user import GetUserResponse
-from .. import helpers
-from ..schemas.token_schema import TokenPayload
+from auth.config import auth_conf
+from auth.schemas import RoleName
+from shared_lib.exceptions import DBError, DuplicateError, NotFoundError, ServerError
 
-TokenDataT = TypeVar("TokenDataT")
+
+@dataclass(slots=True)
+class UserRecord:
+    id: int
+    first_name: str
+    last_name: str
+    email: str
+    hashed_password: str
+    gender: str
+    role_name: RoleName
+    date_of_birth: date | None
 
 
 class AuthRepository:
-    model = User
+    model_name = "User"
+
+    @staticmethod
+    def _safe_ident(name: str) -> str:
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
+            raise ValueError(f"Invalid SQL identifier: {name}")
+        return name
+
+    @property
+    def _users_table(self) -> str:
+        schema = self._safe_ident(auth_conf.DB_SCHEMA or "public")
+        return f"{schema}.users"
+
+    @staticmethod
+    def _to_user_record(row: asyncpg.Record) -> UserRecord:
+        return UserRecord(
+            id=row["id"],
+            first_name=row["first_name"],
+            last_name=row["last_name"],
+            email=row["email"],
+            hashed_password=row["hashed_password"],
+            gender=row["gender"],
+            role_name=row["role_name"],
+            date_of_birth=row["date_of_birth"],
+        )
 
     async def retrieve_user_by_email(
-        self, session: AsyncSession, email: str, is_login: bool = False
-    ) -> User:
-        stmt = select(self.model).filter_by(email=email)
+        self,
+        conn: asyncpg.Connection,
+        email: str,
+        is_login: bool = False,
+    ) -> UserRecord:
+        query = (
+            f"SELECT id, first_name, last_name, email, hashed_password, gender, role_name, date_of_birth "
+            f"FROM {self._users_table} WHERE email = $1"
+        )
         try:
-            res = await session.execute(stmt)
-        except NoSuchTableError:
-            extra = {email: "email"}
+            row = await conn.fetchrow(query, str(email).lower())
+        except PostgresError:
             logger.error(
-                "Database error: User table does not exist", extra=extra, exc_info=True
+                "Database error while retrieving user by email",
+                extra={"email": email},
+                exc_info=True,
             )
             raise ServerError("Unable to retrieve data")
 
-        user = res.scalar_one_or_none()
+        if row and not is_login:
+            raise DuplicateError(entity=self.model_name)
 
-        if user and not is_login:
-            # if there is user when we register
-            raise DuplicateError(entity=self.model.__name__)
+        if not row and is_login:
+            raise NotFoundError(entity=self.model_name)
 
-        if not user and is_login:
-            # if there is no user when we log in
-            raise NotFoundError(entity=self.model.__name__)
+        if row is None:
+            raise NotFoundError(entity=self.model_name)
 
-        return user
+        return self._to_user_record(row)
 
-    async def create_user(self, data: dict, session: AsyncSession) -> GetUserResponse:
-        user_exists: User | None = await self.retrieve_user_by_email(
-            session=session, email=data["email"], is_login=False
-        )
-
-        if not user_exists:
-            user = User(**data)
-            user.email.lower()
-            user.first_name.lower()
-            user.last_name.lower()
-
-            try:
-                session.add(user)
-                await session.commit()
-            except (TypeError, DBAPIError) as e:
-                logger.error("failed to add user: ", e)
-                raise DBError(traceback=str(e))
-            except NoSuchTableError:
-                extra = {"data": data}
-                logger.error(
-                    "Database error: User table does not exist",
-                    extra=extra,
-                    exc_info=True,
-                )
-                raise DBError("No users table")
-
-            stmt = select(User).filter_by(email=data["email"])
-
-            db_user: GetUserResponse = (await session.scalars(stmt)).one_or_none()
-            return db_user
-        return None
-
-    async def login_user(
+    async def create_user(
         self,
-        session: AsyncSession,
-        email: str,
-        password: str,
-    ) -> Mapping[str, TokenDataT | str]:
-        user: User = await self.retrieve_user_by_email(
-            session=session, email=email, is_login=True
+        data: MutableMapping[str, Any],
+        conn: asyncpg.Connection,
+    ) -> UserRecord:
+        _ = await self.retrieve_user_by_email(
+            conn=conn,
+            email=data["email"],
+            is_login=False,
         )
-        if helpers.validate_password(
-            password=password, hashed_password=user.hashed_password
-        ):
-            return {
-                "payload": TokenPayload(
-                    user_id=user.id, email=user.email, role=user.role_name
-                ),
-                "hashed_password": user.hashed_password,
-            }
-        raise UnauthorizedError(detail="Wrong password")
+
+        query = (
+            f"INSERT INTO {self._users_table} "
+            "(first_name, last_name, gender, email, hashed_password, role_name, date_of_birth) "
+            "VALUES ($1, $2, $3, $4, $5, COALESCE($6, 'user'), $7) "
+            "RETURNING id, first_name, last_name, email, hashed_password, gender, role_name, date_of_birth"
+        )
+
+        try:
+            row = await conn.fetchrow(
+                query,
+                data.get("first_name", None),
+                data.get("last_name", None),
+                data.get("gender", None),
+                data.get("email", None),
+                data.get("hashed_password", None),
+                data.get("role_name", None),
+                data.get("date_of_birth", None),
+            )
+        except UniqueViolationError as e:
+            logger.error(f"failed to add user: {e}")
+            raise DBError(traceback=str(e))
+        except PostgresError:
+            logger.error(
+                "Database error while creating user",
+                extra={"data": data},
+                exc_info=True,
+            )
+            raise DBError("Failed to create user")
+
+        if row is None:
+            raise DBError("Failed to create user")
+
+        return self._to_user_record(row)
+
+    async def retrieve_user_by_id(
+        self,
+        conn: asyncpg.Connection,
+        user_id: int,
+    ) -> UserRecord:
+        query = (
+            f"SELECT id, first_name, last_name, email, hashed_password, gender, role_name, date_of_birth "
+            f"FROM {self._users_table} WHERE id = $1"
+        )
+        try:
+            row = await conn.fetchrow(query, user_id)
+        except PostgresError:
+            logger.error(
+                "Database error while retrieving user by id",
+                extra={"user_id": user_id},
+                exc_info=True,
+            )
+            raise ServerError("Unable to retrieve data")
+
+        if row is None:
+            raise NotFoundError(entity=self.model_name)
+        return self._to_user_record(row)
+
+    async def assign_role(
+        self,
+        conn: asyncpg.Connection,
+        user_id: int,
+        role_name: RoleName,
+    ) -> UserRecord:
+        query = (
+            f"UPDATE {self._users_table} SET role_name = $2 WHERE id = $1 "
+            "RETURNING id, first_name, last_name, email, hashed_password, gender, role_name, date_of_birth"
+        )
+        try:
+            row = await conn.fetchrow(query, user_id, role_name)
+        except PostgresError:
+            logger.error(
+                "Database error while assigning role",
+                extra={"user_id": user_id, "role_name": role_name},
+                exc_info=True,
+            )
+            raise DBError("Failed to assign role")
+
+        if row is None:
+            raise NotFoundError(entity=self.model_name)
+
+        return self._to_user_record(row)

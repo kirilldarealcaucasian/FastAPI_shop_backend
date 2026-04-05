@@ -1,0 +1,13 @@
+README.md
+pyproject.toml
+event_saver/__init__.py
+event_saver/config.py
+event_saver/consumer.py
+event_saver/db.py
+event_saver/main.py
+event_saver/schemas.py
+event_saver.egg-info/PKG-INFO
+event_saver.egg-info/SOURCES.txt
+event_saver.egg-info/dependency_links.txt
+event_saver.egg-info/requires.txt
+event_saver.egg-info/top_level.txt
