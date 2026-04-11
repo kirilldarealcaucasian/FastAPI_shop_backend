@@ -6,8 +6,18 @@
 	import BookGrid from '$lib/components/catalog/BookGrid.svelte';
 	import QuickViewModal from '$lib/components/modal/QuickViewModal.svelte';
 	import CartDrawer from '$lib/components/cart/CartDrawer.svelte';
+	import { catalog } from '$lib/modules/catalog/store';
+	import { cart } from '$lib/stores/cart';
+	import type { CatalogPageData } from './+page';
 
-	let cartOpen = false;
+	let { data } = $props<{ data: CatalogPageData }>();
+
+	let cartOpen = $state(false);
+
+	$effect(() => {
+		catalog.hydrate(data.books, data.categories);
+		void cart.sync();
+	});
 </script>
 
 <Header onOpenCart={() => (cartOpen = true)} />
@@ -18,6 +28,11 @@
 	</aside>
 
 	<section class="col-span-12 lg:col-span-9">
+		{#if data.loadError}
+			<div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+				{data.loadError}
+			</div>
+		{/if}
 		<div class="mb-4 flex items-center justify-between">
 			<h2 class="font-display text-2xl font-bold">Каталог книг</h2>
 			<!-- resultCount rendered inside BookGrid or a small component -->

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Book } from '$lib/data/mock';
+	import type { Book } from '$lib/modules/catalog/types';
 	import { fmtEUR } from '$lib/utils/money';
 	import { cart } from '$lib/stores/cart';
 	import { quickView } from '$lib/stores/modal';

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { filters, type SortKey } from '$lib/stores/filters';
-	import { GENRES } from '$lib/data/mock';
+	import { genreOptions } from '$lib/modules/catalog/store';
 
 	function toggleGenre(genre: string) {
 		filters.update((f) => {
@@ -57,7 +57,7 @@
 	<div class="mt-5">
 		<p class="mb-2 text-sm font-semibold">Жанр</p>
 		<div class="flex flex-wrap gap-2">
-			{#each GENRES as g}
+			{#each $genreOptions as g}
 				<button
 					type="button"
 					onclick={() => toggleGenre(g)}
