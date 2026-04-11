@@ -1,25 +1,35 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import DateTime, Double, ForeignKey
+from sqlalchemy import DateTime, Numeric, Enum, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .mixins import TimestampMixin
 from .base import Base
+from .order_status import OrderStatus
+
 
 if TYPE_CHECKING:
-    from .book_order_assoc import BookOrderAssoc
+    from .associations import BookOrderAssoc
     from .payment_detail import PaymentDetail
     from .user import User
 
 
 class Order(Base, TimestampMixin):
     user_id: Mapped[int] = mapped_column()
-    order_status: Mapped[str | None] = mapped_column(
-        default="pending", server_default="pending"
+    order_status: Mapped[OrderStatus] = mapped_column(
+        Enum(
+            OrderStatus,
+            name="order_status_enum",
+            native_enum=True,
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
+        default=OrderStatus.PENDING,
+        server_default=OrderStatus.PENDING.value,
     )
     order_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    total_sum: Mapped[float] = mapped_column(Double, default=0)
+    total_sum: Mapped[Decimal] = mapped_column(Numeric, default=0)
     payment_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("payment_details.id", ondelete="RESTRICT")
     )

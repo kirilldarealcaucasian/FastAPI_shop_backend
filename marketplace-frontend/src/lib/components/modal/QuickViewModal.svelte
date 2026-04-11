@@ -1,7 +1,11 @@
 <script lang="ts">
+	import { sendBookEvent } from '$lib/api/events';
 	import { quickView } from '$lib/stores/modal';
 	import { cart } from '$lib/stores/cart';
 	import { fmtEUR } from '$lib/utils/money';
+
+	const LONG_READ_TIMEOUT_MS = 15_000;
+	const LONG_READ_WEIGHT = 3;
 
 	const close = () => quickView.set(null);
 
@@ -9,6 +13,28 @@
 		if (!$quickView) return;
 		if (e.key === 'Escape') close();
 	}
+
+	function addToCartFromQuickView(): void {
+		if (!$quickView) return;
+		const selectedBook = $quickView;
+		cart.add(selectedBook);
+		void sendBookEvent({ bookId: selectedBook.id, event: 'add_to_cart', weight: 1.5 });
+		close();
+	}
+
+	$effect(() => {
+		if (!$quickView || typeof window === 'undefined') return;
+		const bookId = $quickView.id;
+		const timerId = window.setTimeout(() => {
+			void sendBookEvent({
+				bookId,
+				event: 'description_long_read',
+				weight: LONG_READ_WEIGHT
+			});
+		}, LONG_READ_TIMEOUT_MS);
+
+		return () => window.clearTimeout(timerId);
+	});
 </script>
 
 <svelte:window onkeydown={onKeydown} />
@@ -52,10 +78,7 @@
 
 							<button
 								type="button"
-								onclick={() => {
-									cart.add($quickView);
-									close();
-								}}
+								onclick={addToCartFromQuickView}
 								class="shadow-soft rounded-xl bg-[#3c5de6] px-4 py-2 text-sm font-medium text-white hover:bg-[#2f47b8]"
 							>
 								В корзину

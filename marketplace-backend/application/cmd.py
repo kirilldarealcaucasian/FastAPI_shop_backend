@@ -10,7 +10,7 @@ from fastapi.exceptions import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from loguru import logger
-from aioredis import Redis
+from redis.asyncio import Redis
 
 from infrastructure.minio import minio_client
 from infrastructure.postgres import db_client

@@ -41,24 +41,73 @@ async def save_events(rows: Sequence[dict]) -> None:
         return
 
     schema = EVENTS_SCHEMA
-    query = (
-        f"INSERT INTO {schema}.interaction_events "
-        "(session_id, user_id, item_id, event_type, event_weight, event_timestamp) "
-        "VALUES ($1, $2, $3, $4, $5, $6)"
-    )
-
-    args = [
+    actor_mapping_query = f"""
+        INSERT INTO {schema}.user_index_map (actor_type, user_id, session_id)
+        SELECT t.actor_type, t.user_id, t.session_id
+        FROM UNNEST($1::SMALLINT[], $2::INT[], $3::UUID[]) AS t(actor_type, user_id, session_id)
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM {schema}.user_index_map uim
+            WHERE uim.actor_type = t.actor_type
+              AND uim.user_id IS NOT DISTINCT FROM t.user_id
+              AND uim.session_id IS NOT DISTINCT FROM t.session_id
+        )
+    """
+    item_mapping_query = f"""
+        INSERT INTO {schema}.item_index_map (item_id)
+        SELECT item_id
+        FROM UNNEST($1::BIGINT[]) AS t(item_id)
+        ON CONFLICT (item_id) DO NOTHING
+    """
+    actor_mappings = {
         (
-            row.get("session_id"),
-            row.get("user_id"),
-            row.get("item_id"),
-            row.get("event_type"),
-            row.get("event_weight"),
-            row.get("event_timestamp"),
+            1,
+            int(row["actor_id"]),
+            None,
+        )
+        for row in rows
+        if row.get("actor_id") is not None
+    }
+    actor_mappings |= {
+        (
+            2,
+            None,
+            row["session_id"],
+        )
+        for row in rows
+        if row.get("actor_id") is None and row.get("session_id") is not None
+    }
+
+    actor_types = [mapping[0] for mapping in actor_mappings]
+    user_ids = [mapping[1] for mapping in actor_mappings]
+    session_ids = [mapping[2] for mapping in actor_mappings]
+    item_ids = list({int(row["item_id"]) for row in rows})
+    event_records = [
+        (
+            row["actor_id"],
+            row["item_id"],
+            row["event_type"],
+            row["event_weight"],
+            row["event_timestamp"],
         )
         for row in rows
     ]
 
     async with postgres_connector.acquire() as conn:
         async with conn.transaction():
-            await conn.executemany(query, args)
+            if actor_mappings:
+                await conn.execute(actor_mapping_query, actor_types, user_ids, session_ids)
+            if item_ids:
+                await conn.execute(item_mapping_query, item_ids)
+            await conn.copy_records_to_table(
+                "interaction_events",
+                schema_name=schema,
+                records=event_records,
+                columns=(
+                    "actor_id",
+                    "item_id",
+                    "event_type",
+                    "event_weight",
+                    "event_timestamp",
+                ),
+            )

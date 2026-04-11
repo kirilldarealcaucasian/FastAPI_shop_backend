@@ -16,14 +16,33 @@ def _decode_message(raw: bytes | None) -> dict:
     return json.loads(raw.decode("utf-8"))
 
 
+def _resolve_actor_id(payload: dict) -> dict:
+    resolved_payload = payload.copy()
+
+    actor_id = resolved_payload.get("actor_id")
+    if actor_id is not None:
+        return resolved_payload
+
+    user_id = resolved_payload.get("user_id")
+    if user_id is not None:
+        resolved_payload["actor_id"] = int(user_id)
+    return resolved_payload
+
+
 def _parse_records(messages: Sequence) -> list[dict]:
     rows: list[dict] = []
     for message in messages:
         try:
             payload = _decode_message(message.value)
+            payload = _resolve_actor_id(payload)
             event = BookInteractionEvent.model_validate(payload)
             rows.append(event.to_record())
-        except (json.JSONDecodeError, ValidationError) as exc:
+        except (
+            json.JSONDecodeError,
+            TypeError,
+            ValueError,
+            ValidationError,
+        ) as exc:
             logger.warning(
                 "Skipping malformed event",
                 extra={"offset": message.offset, "error": str(exc)},

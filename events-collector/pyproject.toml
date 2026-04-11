@@ -8,10 +8,8 @@ dependencies = [
     "fastapi[all]>=0.111.0,<0.112.0",
     "uvicorn>=0.27.0.post1,<0.28.0",
     "pydantic-settings>=2.3.4,<3.0.0",
+    "pyjwt[crypto]>=2.8.0,<3.0.0",
     "python-dotenv>=1.0.1,<2.0.0",
-    "redis>=5.0.0,<6.0.0",
-    "aiokafka>=0.11.0,<1.0.0",
-    "loguru>=0.7.3,<0.8.0",
     "shared-lib",
 ]
 

@@ -8,8 +8,8 @@ EventType = Literal["view", "long_view", "cart", "purchase"]
 
 
 class BookInteractionEvent(BaseModel):
-    session_id: UUID
-    user_id: int | None = None
+    actor_id: int | None = None
+    session_id: UUID | None = None
     book_id: int
     event: EventType
     ts: int
@@ -17,10 +17,10 @@ class BookInteractionEvent(BaseModel):
 
     def to_record(self) -> dict:
         return {
+            "actor_id": self.actor_id,
             "session_id": self.session_id,
-            "user_id": self.user_id,
             "item_id": self.book_id,
             "event_type": self.event,
             "event_weight": self.weight,
-            "event_timestamp": datetime.utcfromtimestamp(self.ts),
+            "event_timestamp": datetime.fromtimestamp(self.ts),
         }

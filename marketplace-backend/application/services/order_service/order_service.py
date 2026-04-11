@@ -7,7 +7,8 @@ from uuid import UUID
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...models import Book, BookOrderAssoc, Order, PaymentDetail
+from ...models import Book, BookOrderAssoc, Order
+from ...models.order_status import OrderStatus
 from ...repositories.book_order_assoc_repo import (
     CombinedBookOrderAssocRepoInterface,
 )
@@ -83,7 +84,7 @@ class OrderService(EntityBaseService):
             session=session, id=data["user_id"]
         )  # if no exception was raised
 
-        order_id: int = await super().create(
+        order_id: int = await super(OrderService, self).create(
             repo=self.order_repo, session=session, orm_model=Order(**data)
         )
 
@@ -92,7 +93,7 @@ class OrderService(EntityBaseService):
     async def get_all_orders(
         self, session: AsyncSession, pagination: PaginationS
     ) -> Sequence[GetShortOrderResponse]:
-        orders: list[Order] = await self.order_repo.get_all_orders(
+        orders = await self.order_repo.get_all_orders(
             session=session,
             pagination=Pagination(
                 limit=pagination.limit,
@@ -103,9 +104,7 @@ class OrderService(EntityBaseService):
         res: list[GetShortOrderResponse] = []
 
         for order in orders:
-            order_owner_full_name = " ".join(
-                [order.user.first_name, order.user.last_name]
-            )
+            order_owner_full_name = getattr(order.user, "name", "")
             res.append(
                 GetShortOrderResponse(
                     owner_name=order_owner_full_name,
@@ -132,26 +131,24 @@ class OrderService(EntityBaseService):
             )
 
         try:
-            order_details: list[BookOrderAssoc] = await super().get_by_id(
+            order_details: list[BookOrderAssoc] = await super(OrderService, self).get_by_id(
                 session=session, repo=self.order_repo, id=order_id
             )
         except EntityDoesNotExist:
             return GetOrderResponse(order_id=order_id, books=[])
 
-        books: list[AssocBookResponse] = order_assembler(order_details)
+        books = order_assembler(order_details)
 
         return GetOrderResponse(order_id=order_id, books=books)
 
     async def get_orders_by_user_id(
         self, session: AsyncSession, user_id: int
     ) -> Sequence[GetOrderResponse]:
-        order_details: BookOrderAssoc | None = None
+        order_details: Sequence[BookOrderAssoc] = []
 
         try:
-            order_details: list[BookOrderAssoc] = (
-                await self.order_repo.get_orders_by_user_id(
-                    session=session, user_id=user_id
-                )
+            order_details = await self.order_repo.get_orders_by_user_id(
+                session=session, user_id=user_id
             )  # details of orders made by a user
             logger.debug(
                 "order_details in get_order_by_id",
@@ -175,7 +172,7 @@ class OrderService(EntityBaseService):
 
         for order_id, details in orders.items():
             # for each order convert it into GetOrderResponse
-            books: list[AssocBookResponse] = order_assembler(order_details=details)
+            books = order_assembler(order_details=details)
             result_orders.append(GetOrderResponse(order_id=int(order_id), books=books))
 
         return result_orders
@@ -195,7 +192,7 @@ class OrderService(EntityBaseService):
 
         order_details: list[BookOrderAssoc] = order.order_details
 
-        books: list[AssocBookResponse] = order_assembler(order_details)
+        books = order_assembler(order_details)
 
         return GetOrderResponse(order_id=order.id, books=books)
 
@@ -218,11 +215,11 @@ class OrderService(EntityBaseService):
         if not exists:
             raise EntityDoesNotExist(entity="Order")
 
-        await super().delete(
+        await super(OrderService, self).delete(
             repo=self.order_repo, session=session, instance_id=order_id
         )
 
-        await super().commit(session=session)
+        await super(OrderService, self).commit(session=session)
 
     async def update_order(
         self,
@@ -231,18 +228,24 @@ class OrderService(EntityBaseService):
         dto: UpdatePartiallyOrderRequest,
     ):
         dto_data: dict = dto.model_dump(exclude_none=True, exclude_unset=True)
+        orders = await self.order_repo.get_all(session=session, id=order_id)
+        if not orders:
+            raise EntityDoesNotExist(entity="Order")
 
-        return await super().update(
-            repo=self.order_repo,
-            session=session,
+        order: Order = orders[0]
+        for key, value in dto_data.items():
+            setattr(order, key, value)
+
+        return await self.order_repo.update(
+            orm_model=order,
             instance_id=order_id,
-            orm_model=dto_data,
+            session=session,
         )
 
     async def add_book_to_order(
         self, order_id: int, session: AsyncSession, dto: AddBookToOrderRequest
     ) -> GetOrderResponse:
-        book: Book = await self.book_repo.get_by_id(
+        book: Book | None = await self.book_repo.get_by_id(
             session=session, id=dto.book_id
         )  # if no book http_exception will be raised
 
@@ -265,7 +268,7 @@ class OrderService(EntityBaseService):
                 order_id=order_id,
                 count_ordered=0,
             )
-            await super().create(
+            await super(OrderService, self).create(
                 session=session,
                 repo=self.book_order_assoc_repo,
                 orm_model=order_item,
@@ -307,7 +310,7 @@ class OrderService(EntityBaseService):
         order_id: int,
     ) -> GetOrderResponse:
         try:
-            _: list[BookOrderAssoc] = await super().get_by_id(
+            _: list[BookOrderAssoc] = await super(OrderService, self).get_by_id(
                 session=session, repo=self.order_repo, id=order_id
             )
         except EntityDoesNotExist:
@@ -330,12 +333,11 @@ class OrderService(EntityBaseService):
         status: Literal["success", "failed"],
     ):
         """If status is "success" -> transactionally update payment status
-        and create order with status created. Then copy books from cart
-        to order details, updating order total sum and then change status
-        of order to success. After, delete the cart"""
+        and create order with status done. Then copy books from cart
+        to order details, updating order total sum. After, delete the cart"""
         async with db_client.async_session() as session:
             try:
-                payment_details: PaymentDetail = (
+                payment_details = (
                     await self.payment_detail_repo.get_by_id(
                         session=session, id=payment_id
                     )
@@ -357,28 +359,20 @@ class OrderService(EntityBaseService):
                     )
                 )
                 try:
-                    async with self.uow as uow:
-                        payment_update_obj = PaymentDetail(
-                            id=payment_id,
-                            status="success",
-                        )
-                        await uow.update(
-                            obj=payment_update_obj, orm_model=PaymentDetail
-                        )  # update payment status
+                    payment_details.status = "success"
+                    cart_books: list[AssocBookResponse] = list(cart.books)
 
-                        cart_books: list[AssocBookResponse] = cart.books
-
-                        order_orm_models: list[BookOrderAssoc] = []
-
-                        order_create_obj = Order(
-                            user_id=shopping_session.user_id,
-                            order_status="success",
-                            payment_id=payment_id,
-                            total_sum=payment_details.amount,
-                        )  # create order obj
-                        uow.add(obj=order_create_obj, orm_model=Order)  # create order
-                        await uow.commit()
-                except DBError:
+                    order_orm_models: list[BookOrderAssoc] = []
+                    order_create_obj = Order(
+                        user_id=shopping_session.user_id,
+                        order_status=OrderStatus.DONE,
+                        payment_id=payment_id,
+                        total_sum=payment_details.amount,
+                    )  # create order obj
+                    session.add(payment_details)
+                    session.add(order_create_obj)
+                    await super(OrderService, self).commit(session=session)
+                except ServerError:
                     extra = {
                         "payment_id": payment_id,
                         "shopping_session_id": shopping_session_id,
@@ -409,14 +403,14 @@ class OrderService(EntityBaseService):
                     await self.book_order_assoc_repo.create_many(
                         session=session, orm_models=order_orm_models
                     )  # copy books from cart to order
-                    await super().commit(session=session)
+                    await super(OrderService, self).commit(session=session)
                     logger.info("order has been created and filled successfully")
                 except (ServerError, DBError):
-                    await super().update(  # updates order status to "failed"
+                    await super(OrderService, self).update(  # updates order status to "refund"
                         repo=self.order_repo,
                         session=session,
-                        instance_id=payment_id,
-                        orm_model={"order_status": "failed"},
+                        instance_id=order.id,
+                        orm_model={"order_status": OrderStatus.REFUND},
                     )
                     extra = {
                         "payment_id": payment_id,
@@ -438,13 +432,14 @@ class OrderService(EntityBaseService):
                         repo=self.shopping_session_repo,
                         instance_id=shopping_session_id,
                     )  # delete cart with its items
+                    await super(OrderService, self).commit(session=session)
                 except DBError:
                     extra = {"shopping_session_id": shopping_session_id}
                     logger.error("failed to delete cart", extra=extra)
 
             else:
                 logger.debug("payment status is 'failed'")
-                _ = await super().update(
+                _ = await super(OrderService, self).update(
                     session=session,
                     repo=self.payment_detail_repo,
                     instance_id=payment_id,

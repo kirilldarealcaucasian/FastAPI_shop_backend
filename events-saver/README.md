@@ -14,6 +14,15 @@ Standalone worker service that consumes book interaction events from Kafka and p
 
 If `DB_URL` is not provided, URL is built from DB_* vars.
 
+## Message actor resolution
+
+For each consumed event, actor is resolved in this order:
+
+1. `actor_id` from the payload (if present)
+2. `user_id` from the payload (if present)
+
+If required event fields are invalid, event is skipped as malformed.
+
 ## Run locally
 
 ```bash

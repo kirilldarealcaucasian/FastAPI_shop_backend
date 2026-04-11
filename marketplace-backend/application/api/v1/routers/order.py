@@ -87,7 +87,7 @@ async def delete_order(
 
 @router.post(
     "/items",
-    # dependencies=[Depends(PermissionService().get_order_permission)],
+    dependencies=[Depends(PermissionService().get_order_permission)],
     status_code=status.HTTP_200_OK,
     response_model=GetOrderResponse,
 )

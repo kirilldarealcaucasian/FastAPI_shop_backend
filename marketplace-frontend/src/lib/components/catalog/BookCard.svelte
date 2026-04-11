@@ -1,13 +1,21 @@
 <script lang="ts">
 	import type { Book } from '$lib/modules/catalog/types';
+	import { sendBookEvent } from '$lib/api/events';
 	import { fmtEUR } from '$lib/utils/money';
 	import { cart } from '$lib/stores/cart';
 	import { quickView } from '$lib/stores/modal';
 
 	let { book } = $props<{ book: Book }>();
 
-	const open = () => quickView.set(book);
-	const add = () => cart.add(book);
+	const open = () => {
+		quickView.set(book);
+		void sendBookEvent({ bookId: book.id, event: 'description_open', weight: 1 });
+	};
+
+	const add = () => {
+		cart.add(book);
+		void sendBookEvent({ bookId: book.id, event: 'add_to_cart', weight: 1.5 });
+	};
 </script>
 
 <article

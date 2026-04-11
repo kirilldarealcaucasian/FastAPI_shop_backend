@@ -18,12 +18,12 @@ if TYPE_CHECKING:
 class User(Base, TimestampMixin):
     __table_args__ = {"schema": "auth"}
 
-    name: str
+    name: Mapped[str]
     gender: Mapped[Gender] = mapped_column(String)
     email: Mapped[str] = mapped_column(String, unique=True)
     hashed_password: Mapped[str]
     role_name: Mapped[str] = mapped_column(default="user", server_default="user")
-    date_of_birth: Mapped[date] = mapped_column(Date, server_default=None)
+    date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     orders: Mapped[list["Order"]] = relationship(
         back_populates="user",

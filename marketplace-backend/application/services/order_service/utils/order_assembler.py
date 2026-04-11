@@ -13,11 +13,7 @@ def order_assembler(
 
     for order_detail in order_details:
         book: Book = order_detail.book
-        authors: list[str] = [
-            " ".join([author.first_name, author.last_name]
-                     )
-            for author in book.authors
-        ]  # concat authors' first and last name
+        authors: list[str] = [author.name for author in book.authors]
 
         categories: list[str] = [
             category.name for category in book.categories

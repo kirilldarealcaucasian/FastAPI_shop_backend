@@ -2,8 +2,8 @@ from uuid import UUID as uuid_UUID  # noqa
 
 from fastapi.responses import JSONResponse
 from loguru import logger
-from aioredis import Redis
-from aioredis.exceptions import RedisError
+from redis.asyncio import Redis
+from redis.exceptions import RedisError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...models import Book, CartItem

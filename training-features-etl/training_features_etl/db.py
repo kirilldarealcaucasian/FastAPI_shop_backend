@@ -4,17 +4,10 @@ from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 
 from shared_lib import AsyncpgPostgresConnector
-
 from .config import settings
 
 
 postgres_connector = AsyncpgPostgresConnector(dsn=settings.db_url)
-
-
-def _safe_ident(name: str) -> str:
-    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
-        raise ValueError(f"Invalid SQL identifier: {name}")
-    return name
 
 
 async def connect_db() -> None:
@@ -37,7 +30,6 @@ async def iter_aggregated_features(
     target_end: datetime,
     batch_size: int,
 ) -> AsyncIterator[list[dict[str, Any]]]:
-    schema = _safe_ident(settings.DB_SCHEMA)
 
     query = f"""
     SELECT
@@ -56,7 +48,7 @@ async def iter_aggregated_features(
         MIN(event_timestamp) AS first_event_ts,
         MAX(event_timestamp) AS last_event_ts,
         DATE(event_timestamp) AS event_date
-    FROM {schema}.interaction_events
+    FROM {settings.DB_SCHEMA}.interaction_events
     WHERE event_timestamp >= $1
       AND event_timestamp < $2
     GROUP BY

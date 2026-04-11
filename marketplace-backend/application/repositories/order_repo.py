@@ -75,9 +75,7 @@ class OrderRepository(OrmEntityRepository):
         stmt = (
             select(Order)
             .options(
-                selectinload(Order.user).load_only(
-                    User.first_name, User.last_name, User.email
-                )
+                selectinload(Order.user).load_only(User.name, User.email)
             )
             .offset(pagination.page * pagination.limit)
             .limit(pagination.limit)

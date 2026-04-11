@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { sendBookEvent } from '$lib/api/events';
 	import { cart, cartItems, cartSubtotal, cartCount } from '$lib/stores/cart';
 	import { fmtEUR } from '$lib/utils/money';
 
@@ -7,8 +8,17 @@
 
 	const close = () => onClose?.();
 
-	function onKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape') close();
+	function checkout(): void {
+		for (const item of $cartItems) {
+			void sendBookEvent({
+				bookId: item.book.id,
+				event: 'buy',
+				weight: Math.max(2, item.qty)
+			});
+		}
+
+		// mock checkout for now
+		alert('Оформление заказа скоро появится');
 	}
 
 	// prevent background scroll when open (nice UX)
@@ -156,10 +166,7 @@
 			<button
 				type="button"
 				class="shadow-soft w-full rounded-xl bg-[#f97316] px-4 py-3 text-base font-semibold text-white hover:bg-[#ea580c]"
-				onclick={() => {
-					// mock checkout for now
-					alert('Оформление заказа скоро появится');
-				}}
+				onclick={checkout}
 			>
 				Оформить заказ
 			</button>

@@ -1,40 +1,32 @@
+from functools import cached_property
+from pathlib import Path
 from typing import Literal
 
 from dotenv import load_dotenv
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 load_dotenv()
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 class Settings(BaseSettings):
     MODE: Literal["DEV", "TEST", "LOCAL"] = "DEV"
     LOG_LEVEL: str = "INFO"
 
-    REDIS_HOST: str = "localhost"
-    REDIS_PORT: int = 6379
-
     KAFKA_HOST: str = "localhost"
     KAFKA_PORT: int = 9092
     KAFKA_EVENTS_TOPIC: str = "book_events"
+    JWT_DECODE_ALGORITHM: str = "RS256"
+    JWT_PUBLIC_KEY_PATH: Path = Field(
+        default=PROJECT_ROOT / "auth" / "certs" / "jwt_public_key.pem"
+    )
 
-    EVENTS_HISTORY_LIMIT: int = 200
-    DB_URL: str | None = None
-    DB_USER: str = "postgres"
-    DB_PASSWORD: str = "postgres"
-    DB_SERVER: str = "localhost"
-    DB_PORT: int = 5432
-    DB_NAME: str = "proj_db"
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    @property
-    def postgres_dsn(self) -> str:
-        if self.DB_URL:
-            return self.DB_URL.replace("postgresql+asyncpg://", "postgresql://")
-        return (
-            f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}"
-            f"@{self.DB_SERVER}:{self.DB_PORT}/{self.DB_NAME}"
-        )
-
-    model_config = SettingsConfigDict(env_file=".env")
+    @cached_property
+    def jwt_public_key(self) -> str:
+        return self.JWT_PUBLIC_KEY_PATH.read_text(encoding="utf-8")
 
 
 settings = Settings()

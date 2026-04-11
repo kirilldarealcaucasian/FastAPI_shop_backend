@@ -4,11 +4,12 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from ...models.order_status import OrderStatus
 from ..base_schemas import OrderBaseS
 
 
 class CreateOrderRequest(OrderBaseS):
-    order_status: str | None = None
+    order_status: OrderStatus | None = None
 
 
 class UpdateOrderRequest(OrderBaseS):
@@ -16,7 +17,7 @@ class UpdateOrderRequest(OrderBaseS):
 
 
 class UpdatePartiallyOrderRequest(BaseModel):
-    order_status: str | None
+    order_status: OrderStatus | None
     order_date: datetime | None = None
     total_sum: Decimal | None = Field(default=Decimal(0), ge=0)
 

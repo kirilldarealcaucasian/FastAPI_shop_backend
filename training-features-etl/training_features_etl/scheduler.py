@@ -7,8 +7,11 @@ from .config import settings
 from .db import target_date_window
 from .etl import run_once
 
+type Hour = int
+type Minute = int
 
-def _parse_schedule_time(raw: str) -> tuple[int, int]:
+
+def _parse_schedule_time(raw: str) -> tuple[Hour, Minute]:
     parts = raw.split(":")
     if len(parts) != 2:
         raise ValueError("ETL_RUN_AT_UTC must be in HH:MM format")
@@ -20,7 +23,7 @@ def _parse_schedule_time(raw: str) -> tuple[int, int]:
     return hour, minute
 
 
-def _seconds_until_next_run(now_utc: datetime, hour: int, minute: int) -> float:
+def _seconds_until_next_run(now_utc: datetime, hour: Hour, minute: Minute) -> float:
     next_run = now_utc.replace(hour=hour, minute=minute, second=0, microsecond=0)
     if next_run <= now_utc:
         next_run = next_run + timedelta(days=1)

@@ -69,7 +69,7 @@ class Settings(BaseSettings):
             minutes=int(time_intervals[2]),
         )
 
-    model_config = SettingsConfigDict(env_file=".env")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property
     def get_db_url(cls):  # noqa

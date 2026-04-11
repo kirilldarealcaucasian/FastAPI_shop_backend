@@ -3076,7 +3076,10 @@ name = "shared-lib"
 version = "0.1.0"
 source = { editable = "shared-lib" }
 dependencies = [
+    { name = "aiobotocore" },
+    { name = "aiokafka" },
     { name = "asyncpg" },
+    { name = "botocore" },
     { name = "fastapi", extra = ["all"] },
     { name = "loguru" },
     { name = "redis" },
@@ -3085,7 +3088,10 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aiobotocore", specifier = ">=2.13.1,<3.0.0" },
+    { name = "aiokafka", specifier = ">=0.11.0,<1.0.0" },
     { name = "asyncpg", specifier = "==0.29.0" },
+    { name = "botocore", specifier = ">=1.34.131,<2.0.0" },
     { name = "fastapi", extras = ["all"], specifier = ">=0.111.0,<0.112.0" },
     { name = "loguru", specifier = ">=0.7.3,<0.8.0" },
     { name = "redis", specifier = ">=5.0.0,<6.0.0" },

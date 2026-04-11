@@ -5,6 +5,7 @@ from typing import Sequence
 
 from pydantic import BaseModel, EmailStr, Field
 
+from ...models.order_status import OrderStatus
 from .book import BookSummaryResponse
 
 
@@ -39,7 +40,7 @@ class GetShortOrderResponse(BaseModel):
     owner_name: str = Field(min_length=2)
     owner_email: EmailStr
     order_id: int
-    order_status: str
+    order_status: OrderStatus
     total_sum: float | None = None
     order_date: datetime | None = None
 

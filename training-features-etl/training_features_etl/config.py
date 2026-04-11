@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     ETL_RUN_ON_STARTUP: bool = True
     ETL_LOOKBACK_DAYS: int = 1
     ETL_BATCH_SIZE: int = 10_000
+    ETL_S3_MULTIPART_PART_SIZE_BYTES: int = 8 * 1024 * 1024
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

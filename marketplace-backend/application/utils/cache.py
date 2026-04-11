@@ -6,7 +6,7 @@ from typing import Callable, Union
 from uuid import UUID
 
 from pydantic import TypeAdapter
-from aioredis import Redis
+from redis.asyncio import Redis
 
 __all__ = ("cachify",)
 
