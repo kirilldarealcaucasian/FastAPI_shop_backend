@@ -24,7 +24,7 @@ class BookRepoInterface(Protocol):
 
 class CombinedBookRepoInterface(
     BookRepoInterface,
-    OrmEntityRepoInterface,
+    OrmEntityRepoInterface[Book],
     Protocol,
 ):
     pass

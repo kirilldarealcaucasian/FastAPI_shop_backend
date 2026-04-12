@@ -39,7 +39,7 @@ class BookService(EntityBaseService[Book]):
         data: dict = dto.model_dump(exclude_unset=True, exclude_none=True)
         orm_model = Book(**data)
 
-        created_book: Book = await super().create(
+        created_book = await super().create(
             repo=self.book_repo, session=session, orm_model=orm_model
         )
         await super().commit(session=session)

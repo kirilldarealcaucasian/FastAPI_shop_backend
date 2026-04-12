@@ -7,6 +7,8 @@ __all__ = (
     "GetUserResponse",
     "AuthenticatedUserResponse",
     "AssignRoleRequest",
+    "UpdateUserRequest",
+    "UpdatePartiallyUserRequest",
     "RoleName",
 )
 
@@ -18,4 +20,6 @@ from .user_schema import (
     LoginUserRequest,
     RoleName,
     RegisterUserRequest,
+    UpdatePartiallyUserRequest,
+    UpdateUserRequest,
 )

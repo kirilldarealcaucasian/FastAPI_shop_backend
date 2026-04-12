@@ -37,15 +37,12 @@ class Settings(BaseSettings):
     REDIS_HOST: str
     REDIS_PORT: int
 
-    RABBIT_USER: str
-    RABBIT_PASSWORD: str
-    RABBIT_HOST: str
-    RABBIT_PORT: int
-
     EVENTS_SESSION_COOKIE_NAME: str = "events_session_id"
     EVENTS_SESSION_COOKIE_MAX_AGE_SECONDS: int = 60 * 60 * 24 * 15
     EVENTS_COLLECTOR_BASE_URL: str = "http://localhost:8010"
     EVENTS_COLLECTOR_TIMEOUT_SECONDS: float = 2.0
+    AUTH_SERVICE_BASE_URL: str = "http://localhost:8001/v1/auth"
+    AUTH_SERVICE_TIMEOUT_SECONDS: float = 2.0
 
     MINIO_ENDPOINT_URL: str = "http://localhost:9000"
     MINIO_ACCESS_KEY: str = "minioadmin"

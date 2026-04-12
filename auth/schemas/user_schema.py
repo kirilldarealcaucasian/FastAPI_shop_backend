@@ -50,3 +50,20 @@ class AuthenticatedUserResponse(BaseModel):
 
 class AssignRoleRequest(BaseModel):
     role_name: RoleName
+
+
+class UpdateUserRequest(BaseModel):
+    first_name: str = Field(min_length=2)
+    last_name: str = Field(min_length=2)
+    email: EmailStr
+    role_name: RoleName
+
+
+class UpdatePartiallyUserRequest(BaseModel):
+    first_name: str | None = Field(default=None, min_length=2)
+    last_name: str | None = Field(default=None, min_length=2)
+    gender: Literal["male", "female"] | None = None
+    email: EmailStr | None = None
+    password: str | None = Field(default=None, min_length=6)
+    role_name: RoleName | None = None
+    date_of_birth: date | None = None

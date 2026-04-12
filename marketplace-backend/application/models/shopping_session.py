@@ -11,7 +11,6 @@ from .mixins import TimestampMixin
 
 if TYPE_CHECKING:
     from .cart_item import CartItem
-    from .user import User
 
 
 class ShoppingSession(BaseWithoutId, TimestampMixin):
@@ -21,19 +20,12 @@ class ShoppingSession(BaseWithoutId, TimestampMixin):
 
     id: Mapped[UUID] = mapped_column(primary_key=True)
 
-    user_id: Mapped[int | None] = mapped_column(
-        unique=True
-    )
+    user_id: Mapped[int | None] = mapped_column(unique=True)
     total: Mapped[Decimal] = mapped_column(server_default="0", default=0)
     expiration_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.now() + timedelta(days=1)
     )
 
-    user: Mapped["User"] = relationship(
-        back_populates="shopping_session",
-        primaryjoin="ShoppingSession.user_id == User.id",
-        foreign_keys="ShoppingSession.user_id",
-    )
     cart_items: Mapped[list["CartItem"]] = relationship(
         back_populates="shopping_session"
     )

@@ -1,12 +1,10 @@
 from typing import Annotated
 from fastapi import Depends
-from ..repositories.user_repo import UserRepository, CombinedUserInterface
 from ..repositories.order_repo import OrderRepository, CombinedOrderRepositoryInterface
 from ..services.user_service import UserService
 
 
 def get_user_service(
-    user_repo: Annotated[CombinedUserInterface, Depends(UserRepository)],
     order_repo: Annotated[CombinedOrderRepositoryInterface, Depends(OrderRepository)],
 ) -> UserService:
-    return UserService(user_repo=user_repo, order_repo=order_repo)
+    return UserService(order_repo=order_repo)

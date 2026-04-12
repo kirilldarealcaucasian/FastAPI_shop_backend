@@ -12,11 +12,10 @@ from PIL import Image
 
 from ..repositories.cart_repo import CartRepository
 from .email_config.email_config import email_settings
-from .task_helpers import email_generator, parse_logs_journal
+from .task_helpers import email_generator
 from core.image_conf import ImageConfig
 from infrastructure.celery.app import celery
 from infrastructure.mail import MailClient
-from infrastructure.rabbitmq import rabbit_publisher
 
 task_logger = get_task_logger(__name__)
 
@@ -115,18 +114,6 @@ def delete_all_images(concrete_image_folder: int):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Something went wrong while deleting images",
         )
-
-
-@celery.task
-def save_log():
-    """parses logs file, encodes data and sends to the queue"""
-    logs_bytes: bytes = parse_logs_journal()  # noqa
-    if logs_bytes == b"":
-        logger.info("no logs to save")
-        return
-    rabbit_publisher.send_message_basic_publish(
-        message=logs_bytes, routing_key="logs_q"
-    )
 
 
 @celery.task

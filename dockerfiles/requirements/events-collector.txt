@@ -1,0 +1,5 @@
+fastapi[all]>=0.111.0,<0.112.0
+uvicorn>=0.27.0.post1,<0.28.0
+pydantic-settings>=2.3.4,<3.0.0
+pyjwt[crypto]>=2.8.0,<3.0.0
+python-dotenv>=1.0.1,<2.0.0

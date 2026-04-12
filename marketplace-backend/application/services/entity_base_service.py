@@ -16,7 +16,6 @@ from ..types import Id
 
 class EntityBaseService[OrmModelT]:
     """
-    Takes out responsibility of handling exceptions in each of the service classes.
     EntityBaseService calls to the repository defined in each subclass
     of EntityBaseService
     """
@@ -24,7 +23,7 @@ class EntityBaseService[OrmModelT]:
     @perform_logging
     async def create(
         self,
-        repo: OrmEntityRepoInterface,
+        repo: OrmEntityRepoInterface[OrmModelT],
         session: AsyncSession,
         orm_model: OrmModelT,
     ) -> OrmModelT:
@@ -37,7 +36,7 @@ class EntityBaseService[OrmModelT]:
     @perform_logging
     async def update(
         self,
-        repo: OrmEntityRepoInterface,
+        repo: OrmEntityRepoInterface[OrmModelT],
         session: AsyncSession,
         instance_id: Id,
         orm_model: OrmModelT,

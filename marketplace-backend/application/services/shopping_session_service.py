@@ -23,7 +23,7 @@ from dataclasses import dataclass
 
 
 @dataclass(slots=True, frozen=True)
-class ShoppingSessionService(EntityBaseService):
+class ShoppingSessionService(EntityBaseService[ShoppingSession]):
     shopping_session_repo: CombinedShoppingSessionRepositoryInterface
 
     async def get_shopping_session_by_id(
@@ -61,13 +61,13 @@ class ShoppingSessionService(EntityBaseService):
         )
         orm_model = ShoppingSession(**data)
 
-        session_id = await super().create(
+        shopping_session = await super().create(
             session=session, repo=self.shopping_session_repo, orm_model=orm_model
         )
 
         await super().commit(session=session)
 
-        return session_id
+        return shopping_session.id
 
     async def update_shopping_session(
         self,
@@ -77,9 +77,11 @@ class ShoppingSessionService(EntityBaseService):
     ) -> GetShoppingSessionResponse:
         data: dict = dto.model_dump(exclude_unset=True)
 
-        return await super().update(
-            session=session,
+        shopping_session = await super().update(
             repo=self.shopping_session_repo,
+            session=session,
             instance_id=id,
-            orm_model=data,
+            orm_model=ShoppingSession(**data),
         )
+
+        return GetShoppingSessionResponse.model_validate(shopping_session)

@@ -43,11 +43,6 @@ celery: Celery = client.get_celery_client()
 
 
 celery.conf.beat_schedule = {  # tasks that are run recurrently
-    "save-logs-every-minute": {
-        "task": "application.tasks.tasks1.save_log",
-        "schedule": crontab(minute="*/1"),  # run every minute
-        "args": (),
-    },
     "remove-expired-carts-every-ten-minutes": {
         "task": "application.tasks.tasks1.remove_expired_carts",
         # "schedule": crontab(minute="*/10"),  # run every 10 minutes,

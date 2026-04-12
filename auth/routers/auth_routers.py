@@ -1,8 +1,14 @@
 import asyncpg
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from auth.schemas import AssignRoleRequest, LoginUserRequest, RegisterUserRequest
+from auth.schemas import (
+    AssignRoleRequest,
+    LoginUserRequest,
+    RegisterUserRequest,
+    UpdatePartiallyUserRequest,
+    UpdateUserRequest,
+)
 from auth.schemas import (
     AuthenticatedUserResponse,
     GetUserResponse,
@@ -11,6 +17,7 @@ from ..infrastructure import get_transaction_connection
 from ..schemas import AuthResponse
 from ..services.auth_service import AuthService
 from ..services.permission_service import PermissionService
+from ..services.user_service import UserService
 
 router = APIRouter(prefix="/v1/auth", tags=["Authentication and Authorization"])
 http_bearer = HTTPBearer()
@@ -64,3 +71,70 @@ async def appoint_role_to_user(
     service: AuthService = Depends(),
 ):
     return await service.assign_role(conn=conn, user_id=user_id, data=data)
+
+
+@router.get(
+    "/users/{user_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=GetUserResponse,
+)
+async def get_user_by_id(
+    user_id: int,
+    conn: asyncpg.Connection = Depends(get_transaction_connection),
+    service: UserService = Depends(),
+):
+    return await service.get_user_by_id(conn=conn, user_id=user_id)
+
+
+@router.get(
+    "/users",
+    status_code=status.HTTP_200_OK,
+    response_model=list[GetUserResponse],
+)
+async def get_all_users(
+    conn: asyncpg.Connection = Depends(get_transaction_connection),
+    service: UserService = Depends(),
+    page: int = Query(default=0, ge=0),
+    limit: int = Query(default=10, ge=1, le=100),
+):
+    return await service.get_all_users(conn=conn, page=page, limit=limit)
+
+
+@router.put(
+    "/users/{user_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=GetUserResponse,
+)
+async def update_user(
+    user_id: int,
+    data: UpdateUserRequest,
+    conn: asyncpg.Connection = Depends(get_transaction_connection),
+    service: UserService = Depends(),
+):
+    return await service.update_user(conn=conn, user_id=user_id, data=data)
+
+
+@router.patch(
+    "/users/{user_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=GetUserResponse,
+)
+async def update_user_partially(
+    user_id: int,
+    data: UpdatePartiallyUserRequest,
+    conn: asyncpg.Connection = Depends(get_transaction_connection),
+    service: UserService = Depends(),
+):
+    return await service.update_user(conn=conn, user_id=user_id, data=data)
+
+
+@router.delete(
+    "/users/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_user(
+    user_id: int,
+    conn: asyncpg.Connection = Depends(get_transaction_connection),
+    service: UserService = Depends(),
+):
+    return await service.delete_user(conn=conn, user_id=user_id)

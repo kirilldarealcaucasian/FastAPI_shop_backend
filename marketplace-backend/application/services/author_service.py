@@ -15,14 +15,17 @@ from dataclasses import dataclass
 
 
 @dataclass(slots=True, frozen=True)
-class AuthorService(EntityBaseService):
+class AuthorService(EntityBaseService[Author]):
     author_repo: OrmEntityRepoInterface
 
-    async def get_all_authors(self, session: AsyncSession) -> Sequence[GetAuthorResponse]:
-        return await super().get_all(
+    async def get_all_authors(
+        self, session: AsyncSession
+    ) -> Sequence[GetAuthorResponse]:
+        authors = await super().get_all(
             repo=self.author_repo,
             session=session,
         )
+        return [GetAuthorResponse.model_validate(author) for author in authors]
 
     async def get_authors_by_filters(
         self, session: AsyncSession, **filters
