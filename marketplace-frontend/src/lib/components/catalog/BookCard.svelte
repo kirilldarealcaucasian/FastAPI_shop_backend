@@ -9,12 +9,12 @@
 
 	const open = () => {
 		quickView.set(book);
-		void sendBookEvent({ bookId: book.id, event: 'description_open', weight: 1 });
+		void sendBookEvent({ bookId: book.id, event: 'view' });
 	};
 
 	const add = () => {
 		cart.add(book);
-		void sendBookEvent({ bookId: book.id, event: 'add_to_cart', weight: 1.5 });
+		void sendBookEvent({ bookId: book.id, event: 'cart' });
 	};
 </script>
 

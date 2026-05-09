@@ -1,11 +1,14 @@
 # event-saver
 
-Standalone worker service that consumes book interaction events from Kafka and persists them to Postgres table `interaction_events`.
+Standalone worker service that consumes recommendation messages from Kafka.
+Book interaction events are persisted to `interaction_events`; login/session link
+messages update `user_index_map`.
 
 ## Environment
 
 - `KAFKA_BOOTSTRAP_SERVERS` (default: `localhost:9092`)
-- `KAFKA_TOPIC` (default: `book_events`)
+- `KAFKA_BOOK_EVENTS_TOPIC` (default: `book_events`)
+- `KAFKA_AUTH_EVENTS_TOPIC` (default: `auth_events`)
 - `KAFKA_GROUP_ID` (default: `event-saver`)
 - `KAFKA_AUTO_OFFSET_RESET` (default: `earliest`)
 - `KAFKA_BATCH_SIZE` (default: `100`)
@@ -14,14 +17,16 @@ Standalone worker service that consumes book interaction events from Kafka and p
 
 If `DB_URL` is not provided, URL is built from DB_* vars.
 
-## Message actor resolution
+## Consumed messages
 
-For each consumed event, actor is resolved in this order:
+The worker consumes shared recommendation messages:
 
-1. `actor_id` from the payload (if present)
-2. `user_id` from the payload (if present)
+- `BookEventMessage` from `KAFKA_BOOK_EVENTS_TOPIC`: saved to `interaction_events`
+  and upserts its `session_id` into `user_index_map`.
+- `UserSessionLinkMessage` from `KAFKA_AUTH_EVENTS_TOPIC`: updates
+  `user_index_map.user_id` for the matching `session_id` when a user registers.
 
-If required event fields are invalid, event is skipped as malformed.
+If required message fields are invalid, the message is skipped as malformed.
 
 ## Run locally
 

@@ -5,7 +5,6 @@
 	import { fmtEUR } from '$lib/utils/money';
 
 	const LONG_READ_TIMEOUT_MS = 15_000;
-	const LONG_READ_WEIGHT = 3;
 
 	const close = () => quickView.set(null);
 
@@ -18,7 +17,7 @@
 		if (!$quickView) return;
 		const selectedBook = $quickView;
 		cart.add(selectedBook);
-		void sendBookEvent({ bookId: selectedBook.id, event: 'add_to_cart', weight: 1.5 });
+		void sendBookEvent({ bookId: selectedBook.id, event: 'cart' });
 		close();
 	}
 
@@ -26,11 +25,7 @@
 		if (!$quickView || typeof window === 'undefined') return;
 		const bookId = $quickView.id;
 		const timerId = window.setTimeout(() => {
-			void sendBookEvent({
-				bookId,
-				event: 'description_long_read',
-				weight: LONG_READ_WEIGHT
-			});
+			void sendBookEvent({ bookId, event: 'long_view' });
 		}, LONG_READ_TIMEOUT_MS);
 
 		return () => window.clearTimeout(timerId);

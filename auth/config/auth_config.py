@@ -39,11 +39,16 @@ class AuthConfig(BaseSettings):
     JWT_PUBLIC_KEY: Path = AUTH_DIR / Path("certs") / Path("jwt_public_key.pem")
     JWT_PRIVATE_KEY: Path = AUTH_DIR / Path("certs") / Path("jwt_private_key.pem")
     SALT: str = "test_salt"
+    KAFKA_HOST: str = "localhost"
+    KAFKA_PORT: int = 9092
+    KAFKA_AUTH_EVENTS_TOPIC: str = "auth_events"
+    EVENTS_SESSION_COOKIE_NAME: str = "events_session_id"
+    EVENTS_SESSION_COOKIE_MAX_AGE_SECONDS: int = 60 * 60 * 24 * 15
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property
-    def get_db_url(self) -> str | None:
+    def get_db_url(self) -> str:
         if self.MODE == "DEV":
             return (
                 "postgresql://"
@@ -62,7 +67,7 @@ class AuthConfig(BaseSettings):
                 f"{self.LOCAL_POSTGRES_USER}:{self.LOCAL_POSTGRES_PASSWORD}"
                 f"@{self.LOCAL_POSTGRES_SERVER}:{self.LOCAL_POSTGRES_PORT}/{self.LOCAL_POSTGRES_DB}"
             )
-        return None
+        raise RuntimeError("unexpected mode selected, can't get db url")
 
 
 auth_conf = AuthConfig()

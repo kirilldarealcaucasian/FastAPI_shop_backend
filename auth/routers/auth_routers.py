@@ -1,6 +1,9 @@
 import asyncpg
-from fastapi import APIRouter, Depends, Query, status
+from datetime import datetime, timedelta
+from fastapi import APIRouter, Cookie, Depends, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from loguru import logger
+from uuid import UUID
 
 from auth.schemas import (
     AssignRoleRequest,
@@ -9,11 +12,14 @@ from auth.schemas import (
     UpdatePartiallyUserRequest,
     UpdateUserRequest,
 )
+from ..config import auth_conf
+from shared_lib.recommendations.models import UserSessionLinkMessage
 from auth.schemas import (
     AuthenticatedUserResponse,
     GetUserResponse,
 )
 from ..infrastructure import get_transaction_connection
+from ..infrastructure.kafka import kafka_publisher
 from ..schemas import AuthResponse
 from ..services.auth_service import AuthService
 from ..services.permission_service import PermissionService
@@ -30,10 +36,30 @@ http_bearer = HTTPBearer()
 )
 async def register_user(
     data: RegisterUserRequest,
+    events_session_id: str | None = Cookie(
+        default=None,
+        alias=auth_conf.EVENTS_SESSION_COOKIE_NAME,
+    ),
     conn: asyncpg.Connection = Depends(get_transaction_connection),
     service: AuthService = Depends(),
 ):
-    return await service.register_user(conn=conn, data=data)
+    registered_user = await service.register_user(conn=conn, data=data)
+    if events_session_id is not None:
+        try:
+            link_message = UserSessionLinkMessage(
+                session_id=UUID(events_session_id),
+                user_id=registered_user.id,
+                session_expiration_time=datetime.now()
+                + timedelta(seconds=auth_conf.EVENTS_SESSION_COOKIE_MAX_AGE_SECONDS),
+            )
+            await kafka_publisher.send_message(
+                topic=auth_conf.KAFKA_AUTH_EVENTS_TOPIC,
+                message=link_message.model_dump_json().encode("utf-8"),
+            )
+        except ValueError as exc:
+            logger.opt(exception=exc).warning("failed to publish user session link")
+
+    return registered_user
 
 
 @router.post(
@@ -46,7 +72,10 @@ async def login_user(
     conn: asyncpg.Connection = Depends(get_transaction_connection),
     service: AuthService = Depends(),
 ):
-    return await service.authorize_user(conn=conn, user_creds=creds)
+    return await service.authorize_user(
+        conn=conn,
+        user_creds=creds,
+    )
 
 
 @router.get("/me", response_model=AuthenticatedUserResponse)

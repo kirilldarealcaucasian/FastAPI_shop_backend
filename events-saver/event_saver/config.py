@@ -4,9 +4,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     KAFKA_BOOTSTRAP_SERVERS: str = "localhost:9092"
-    KAFKA_TOPIC: str = "book_events"
+    KAFKA_BOOK_EVENTS_TOPIC: str = "book_events"
+    KAFKA_AUTH_EVENTS_TOPIC: str = "auth_events"
     KAFKA_GROUP_ID: str = "event-saver"
-    KAFKA_AUTO_OFFSET_RESET: str = "earliest"
+    KAFKA_AUTO_OFFSET_RESET: str = "latest"
     KAFKA_BATCH_SIZE: int = 100
 
     DB_URL: str | None = None

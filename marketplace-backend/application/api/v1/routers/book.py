@@ -4,6 +4,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Cookie, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ....filters import BookFilter, Pagination
 from ....schemas.request.book import (
     CreateBookRequest,
     UpdateBookRequest,
@@ -15,13 +16,10 @@ from ....schemas.response.book import (
     UpdateBookResponse,
 )
 from ....services.book_service import BookService
-from ....services.events_collector_service import EventsCollectorService
 from ....service_providers.book import get_book_service
-from ....service_providers.events_collector import get_events_collector_service
-from ....filters import BookFilter, Pagination
-from ....access_control.identity import get_optional_user_id
 from ....settings import settings
 from ....utils.cache import cachify
+from ....utils.session_cookie import prolong_events_session_cookie
 from infrastructure.postgres import db_client
 
 router = APIRouter(prefix="/books", tags=["Books"])
@@ -40,49 +38,10 @@ async def get_all_books(
     ),
     session: AsyncSession = Depends(db_client.get_scoped_session_dependency),
 ):
-    if not events_session_id:
-        response.set_cookie(
-            key=settings.EVENTS_SESSION_COOKIE_NAME,
-            value=str(uuid4()),
-            httponly=True,
-            secure=True,
-            samesite="lax",
-            max_age=settings.EVENTS_SESSION_COOKIE_MAX_AGE_SECONDS,
-            expires=settings.EVENTS_SESSION_COOKIE_MAX_AGE_SECONDS,
-        )
+    current_session_id = events_session_id or str(uuid4())
+    prolong_events_session_cookie(response=response, session_id=current_session_id)
     return await service.get_all_books(
         session=session, filters=filters, pagination=pagination
-    )
-
-
-async def collect_book_view_event(
-    book_id: int,
-    response: Response,
-    events_collector: EventsCollectorService = Depends(get_events_collector_service),
-    events_session_id: str | None = Cookie(
-        default=None, alias=settings.EVENTS_SESSION_COOKIE_NAME
-    ),
-    user_id: int | None = Depends(get_optional_user_id),
-) -> None:
-    current_session_id = events_session_id
-    if not current_session_id:
-        current_session_id = str(uuid4())
-        response.set_cookie(
-            key=settings.EVENTS_SESSION_COOKIE_NAME,
-            value=current_session_id,
-            httponly=True,
-            secure=True,
-            samesite="lax",
-            max_age=settings.EVENTS_SESSION_COOKIE_MAX_AGE_SECONDS,
-            expires=settings.EVENTS_SESSION_COOKIE_MAX_AGE_SECONDS,
-        )
-
-    await events_collector.collect_book_event(
-        session_id=current_session_id,
-        user_id=user_id,
-        book_id=book_id,
-        event="view",
-        weight=1.0,
     )
 
 
@@ -94,10 +53,15 @@ async def collect_book_view_event(
 @cachify(GetBookResponse, cache_time=timedelta(seconds=10))
 async def get_book_by_id(
     book_id: int,
+    response: Response,
     service: BookService = Depends(get_book_service),
-    _: None = Depends(collect_book_view_event),
+    events_session_id: str | None = Cookie(
+        default=None, alias=settings.EVENTS_SESSION_COOKIE_NAME
+    ),
     session: AsyncSession = Depends(db_client.get_scoped_session_dependency),
 ):
+    current_session_id = events_session_id or str(uuid4())
+    prolong_events_session_cookie(response=response, session_id=current_session_id)
     return await service.get_book_by_id(session=session, id=book_id)
 
 

@@ -4,13 +4,16 @@ import uvicorn
 from fastapi import FastAPI
 
 from auth.infrastructure import db_client
+from auth.infrastructure.kafka import kafka_connector
 from auth.routers import auth_router
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await db_client.connect()
+    await kafka_connector.connect()
     yield
+    await kafka_connector.disconnect()
     await db_client.disconnect()
 
 

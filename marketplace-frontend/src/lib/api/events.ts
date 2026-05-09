@@ -1,20 +1,19 @@
 import { env } from '$env/dynamic/public';
 
 export type BookEventName =
-	| 'description_open'
-	| 'description_long_read'
-	| 'add_to_cart'
-	| 'buy';
+	| 'view'
+	| 'long_view'
+	| 'cart'
+	| 'purchase';
 
 type SendBookEventParams = {
 	bookId: number;
 	event: BookEventName;
-	weight?: number;
 };
 
 const DEFAULT_COLLECT_ENDPOINT = 'http://localhost:8010/api/v1/events/collect';
-const MOCK_SESSION_ID = 'mock-session-frontend';
-const MOCK_USER_ID = 1;
+const EVENTS_SESSION_EXPIRATION_COOKIE = 'events_session_expiration_time';
+const EVENTS_SESSION_EXPIRATION_HEADER = 'X-Events-Session-Expiration-Time';
 
 function resolveCollectorEndpoint(): string {
 	const configured = env.PUBLIC_EVENTS_COLLECTOR_URL?.trim();
@@ -25,25 +24,44 @@ function resolveCollectorEndpoint(): string {
 	return `${normalized}/events/collect`;
 }
 
+function readCookie(name: string): string | null {
+	if (typeof document === 'undefined') return null;
+
+	const cookie = document.cookie
+		.split('; ')
+		.find((part) => part.startsWith(`${name}=`));
+	if (!cookie) return null;
+
+	const value = cookie.slice(name.length + 1).replace(/^"|"$/g, '');
+	return decodeURIComponent(value);
+}
+
 export async function sendBookEvent({
 	bookId,
-	event,
-	weight = 1
+	event
 }: SendBookEventParams): Promise<void> {
+	const sessionExpirationTime = readCookie(EVENTS_SESSION_EXPIRATION_COOKIE);
+	if (!sessionExpirationTime) {
+		console.warn('Failed to send book event: missing events session expiration', {
+			event,
+			bookId
+		});
+		return;
+	}
+
 	const payload = {
-		session_id: MOCK_SESSION_ID,
-		user_id: MOCK_USER_ID,
 		book_id: bookId,
-		event,
+		action: event,
 		ts: Math.floor(Date.now() / 1000),
-		weight
 	};
 
 	try {
 		const response = await fetch(resolveCollectorEndpoint(), {
 			method: 'POST',
+			credentials: 'include',
 			headers: {
-				'Content-Type': 'application/json'
+				'Content-Type': 'application/json',
+				[EVENTS_SESSION_EXPIRATION_HEADER]: sessionExpirationTime
 			},
 			body: JSON.stringify(payload)
 		});

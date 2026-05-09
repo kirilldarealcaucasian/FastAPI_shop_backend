@@ -12,8 +12,7 @@
 		for (const item of $cartItems) {
 			void sendBookEvent({
 				bookId: item.book.id,
-				event: 'buy',
-				weight: Math.max(2, item.qty)
+				event: 'purchase'
 			});
 		}
 

@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     REDIS_EVENTS_TTL_SECONDS: int = 60 * 60 * 24 * 7
     REDIS_EVENTS_PER_USER_LIMIT: int = 50
     EVENTS_SESSION_COOKIE_NAME: str = "events_session_id"
+    EVENTS_SESSION_EXPIRATION_HEADER_NAME: str = "X-Events-Session-Expiration-Time"
     JWT_DECODE_ALGORITHM: str = "RS256"
     JWT_PUBLIC_KEY_PATH: Path = Field(
         default=PROJECT_ROOT / "auth" / "certs" / "jwt_public_key.pem"

@@ -1,13 +1,22 @@
 import json
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 from aiokafka import AIOKafkaConsumer
 from loguru import logger
 from pydantic import ValidationError
+from shared_lib.recommendations.models import BookEventMessage, UserSessionLinkMessage
 
 from .config import settings
-from .db import save_events
-from .schemas import BookInteractionEvent
+from .processor import link_user_sessions, save_events
+
+
+@dataclass(slots=True)
+class ParsedMessages:
+    book_events: list[BookEventMessage]
+    user_session_links: list[UserSessionLinkMessage]
+    malformed_count: int = 0
+    unexpected_topic_count: int = 0
 
 
 def _decode_message(raw: bytes | None) -> dict:
@@ -16,43 +25,79 @@ def _decode_message(raw: bytes | None) -> dict:
     return json.loads(raw.decode("utf-8"))
 
 
-def _resolve_actor_id(payload: dict) -> dict:
-    resolved_payload = payload.copy()
-
-    actor_id = resolved_payload.get("actor_id")
-    if actor_id is not None:
-        return resolved_payload
-
-    user_id = resolved_payload.get("user_id")
-    if user_id is not None:
-        resolved_payload["actor_id"] = int(user_id)
-    return resolved_payload
-
-
-def _parse_records(messages: Sequence) -> list[dict]:
-    rows: list[dict] = []
+def _parse_messages(
+    messages: Sequence,
+) -> ParsedMessages:
+    events: list[BookEventMessage] = []
+    links: list[UserSessionLinkMessage] = []
+    malformed_count = 0
+    unexpected_topic_count = 0
     for message in messages:
         try:
             payload = _decode_message(message.value)
-            payload = _resolve_actor_id(payload)
-            event = BookInteractionEvent.model_validate(payload)
-            rows.append(event.to_record())
+            if message.topic == settings.KAFKA_BOOK_EVENTS_TOPIC:
+                events.append(BookEventMessage.model_validate(payload))
+            elif message.topic == settings.KAFKA_AUTH_EVENTS_TOPIC:
+                links.append(UserSessionLinkMessage.model_validate(payload))
+            else:
+                unexpected_topic_count += 1
+                logger.warning(
+                    "Skipping message from unexpected topic",
+                    extra={
+                        "topic": message.topic,
+                        "partition": message.partition,
+                        "offset": message.offset,
+                    },
+                )
         except (
             json.JSONDecodeError,
             TypeError,
             ValueError,
             ValidationError,
         ) as exc:
+            malformed_count += 1
             logger.warning(
                 "Skipping malformed event",
-                extra={"offset": message.offset, "error": str(exc)},
+                extra={
+                    "topic": message.topic,
+                    "partition": message.partition,
+                    "offset": message.offset,
+                    "error": str(exc),
+                },
             )
-    return rows
+    return ParsedMessages(
+        book_events=events,
+        user_session_links=links,
+        malformed_count=malformed_count,
+        unexpected_topic_count=unexpected_topic_count,
+    )
+
+
+def _records_metadata(records_map: dict) -> dict:
+    topic_counts: dict[str, int] = {}
+    offset_ranges: dict[str, str] = {}
+
+    for topic_partition, records in records_map.items():
+        if not records:
+            continue
+
+        topic_counts[topic_partition.topic] = topic_counts.get(
+            topic_partition.topic, 0
+        ) + len(records)
+        offset_ranges[f"{topic_partition.topic}:{topic_partition.partition}"] = (
+            f"{records[0].offset}-{records[-1].offset}"
+        )
+
+    return {
+        "topic_counts": topic_counts,
+        "offset_ranges": offset_ranges,
+    }
 
 
 async def consume_forever() -> None:
     consumer = AIOKafkaConsumer(
-        settings.KAFKA_TOPIC,
+        settings.KAFKA_BOOK_EVENTS_TOPIC,
+        settings.KAFKA_AUTH_EVENTS_TOPIC,
         bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
         group_id=settings.KAFKA_GROUP_ID,
         auto_offset_reset=settings.KAFKA_AUTO_OFFSET_RESET,
@@ -62,9 +107,14 @@ async def consume_forever() -> None:
     logger.info(
         "Kafka consumer started",
         extra={
-            "topic": settings.KAFKA_TOPIC,
+            "topics": (
+                settings.KAFKA_BOOK_EVENTS_TOPIC,
+                settings.KAFKA_AUTH_EVENTS_TOPIC,
+            ),
             "group_id": settings.KAFKA_GROUP_ID,
             "bootstrap": settings.KAFKA_BOOTSTRAP_SERVERS,
+            "auto_offset_reset": settings.KAFKA_AUTO_OFFSET_RESET,
+            "batch_size": settings.KAFKA_BATCH_SIZE,
         },
     )
 
@@ -75,14 +125,50 @@ async def consume_forever() -> None:
                 max_records=settings.KAFKA_BATCH_SIZE,
             )
             messages = [msg for records in records_map.values() for msg in records]
+
             if not messages:
                 continue
 
-            rows = _parse_records(messages)
-            if rows:
-                await save_events(rows=rows)
+            logger.info(
+                "Kafka messages received",
+                extra={
+                    "message_count": len(messages),
+                    **_records_metadata(records_map),
+                },
+            )
+            parsed_messages = _parse_messages(messages)
+            logger.info(
+                "Kafka messages parsed",
+                extra={
+                    "book_event_count": len(parsed_messages.book_events),
+                    "user_session_link_count": len(parsed_messages.user_session_links),
+                    "malformed_count": parsed_messages.malformed_count,
+                    "unexpected_topic_count": parsed_messages.unexpected_topic_count,
+                },
+            )
+            try:
+                if parsed_messages.book_events:
+                    await save_events(events=parsed_messages.book_events)
+                if parsed_messages.user_session_links:
+                    await link_user_sessions(links=parsed_messages.user_session_links)
+            except Exception:
+                logger.exception(
+                    "Failed to process Kafka batch",
+                    extra={
+                        "message_count": len(messages),
+                        "book_event_count": len(parsed_messages.book_events),
+                        "user_session_link_count": len(
+                            parsed_messages.user_session_links,
+                        ),
+                    },
+                )
+                raise
 
             await consumer.commit()
+            logger.info(
+                "Kafka offsets committed",
+                extra={"message_count": len(messages)},
+            )
     finally:
         await consumer.stop()
         logger.info("Kafka consumer stopped")

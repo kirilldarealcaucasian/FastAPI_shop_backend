@@ -7,6 +7,7 @@ from .db import connect_db, disconnect_db
 
 
 async def run() -> None:
+    logger.info("event-saver starting")
     await connect_db()
     try:
         await consume_forever()

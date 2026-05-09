@@ -15,13 +15,14 @@ from sqlalchemy import MetaData, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 from sqlalchemy.sql.schema import Table
-from application.settings import settings  # noqa: E402
 
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
-BACKEND_DIR = ROOT_DIR / "marketplace-backend"
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+SCRIPTS_DIR = BACKEND_DIR / "scripts"
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
+
+from application.settings import settings  # noqa: E402
 
 
 AUTHOR_SPLIT_PATTERN = re.compile(r"\s*(?:\||;|&| and )\s*", re.IGNORECASE)
@@ -370,7 +371,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--csv",
         type=Path,
-        default=ROOT_DIR / "scripts" / "books.csv",
+        default=SCRIPTS_DIR / "books.csv",
         help="Path to CSV file. Default: scripts/books.csv",
     )
     return parser.parse_args()

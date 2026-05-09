@@ -109,7 +109,6 @@ services:
       SHOPPING_SESSION_DURATION: "1:0:0"
       SHOPPING_SESSION_COOKIE_NAME: shopping_session_id
       YOOCASSA_SECRET_KEY: test_key
-      EVENTS_COLLECTOR_BASE_URL: http://events-collector:8010
       MINIO_ENDPOINT_URL: http://minio:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
@@ -155,10 +154,16 @@ services:
       DB_NAME: proj_db
       DB_SCHEMA: auth
       SALT: test_salt
+      KAFKA_HOST: kafka
+      KAFKA_PORT: 9092
+      KAFKA_AUTH_EVENTS_TOPIC: auth_events
+      EVENTS_SESSION_COOKIE_NAME: events_session_id
     ports:
       - "8001:8001"
     depends_on:
       postgres:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
 
   events-collector:
@@ -212,7 +217,8 @@ services:
     restart: unless-stopped
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      KAFKA_TOPIC: book_events
+      KAFKA_BOOK_EVENTS_TOPIC: book_events
+      KAFKA_AUTH_EVENTS_TOPIC: auth_events
       KAFKA_GROUP_ID: event-saver
       DB_SERVER: postgres
       DB_PORT: 5432
@@ -327,7 +333,6 @@ services:
       SHOPPING_SESSION_DURATION: "1:0:0"
       SHOPPING_SESSION_COOKIE_NAME: shopping_session_id
       YOOCASSA_SECRET_KEY: test_key
-      EVENTS_COLLECTOR_BASE_URL: http://events-collector:8010
       MINIO_ENDPOINT_URL: http://minio:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin

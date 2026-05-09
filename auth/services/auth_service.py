@@ -22,7 +22,6 @@ from ..schemas.token_schema import AuthResponse, TokenPayload
 
 
 class AuthService:
-
     def __init__(self, repository: AuthRepository = Depends(AuthRepository)):
         self._auth_repo = repository
 

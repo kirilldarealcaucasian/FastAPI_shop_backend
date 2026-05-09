@@ -7,7 +7,6 @@ __all__ = (
     "ShoppingSessionService",
     "CartService",
     "PaymentService",
-    "EventsCollectorService",
 )
 
 from .author_service import AuthorService
@@ -18,4 +17,3 @@ from .order_service.order_service import OrderService
 from .payment_service import PaymentService
 from .shopping_session_service import ShoppingSessionService
 from .user_service import UserService
-from .events_collector_service import EventsCollectorService
